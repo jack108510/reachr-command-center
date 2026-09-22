@@ -10,7 +10,7 @@ create table if not exists public.reachr_conversations (
   sender_actor_id text,
   sender_actor_name text,
   messenger_url text,
-  source text not null default 'messenger',
+  source text not null default 'reachr_local_ledger',
   marketplace_excluded boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -25,6 +25,19 @@ create table if not exists public.reachr_messages (
   created_at timestamptz not null default now(),
   unique (conversation_id, provenance)
 );
+-- Reruns repair columns added after the first draft migration.
+alter table public.reachr_conversations add column if not exists recipient_name text;
+alter table public.reachr_conversations add column if not exists sender_actor_id text;
+alter table public.reachr_conversations add column if not exists sender_actor_name text;
+alter table public.reachr_conversations alter column source set default 'reachr_local_ledger';
+do $$ begin
+  if not exists (select 1 from pg_constraint where conrelid='public.reachr_messages'::regclass and contype='u' and conkey=array[
+    (select attnum from pg_attribute where attrelid='public.reachr_messages'::regclass and attname='conversation_id'),
+    (select attnum from pg_attribute where attrelid='public.reachr_messages'::regclass and attname='provenance')
+  ]::smallint[]) then
+    alter table public.reachr_messages add constraint reachr_messages_conversation_provenance_key unique (conversation_id, provenance);
+  end if;
+end $$;
 create table if not exists public.reachr_reply_jobs (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid not null references public.reachr_conversations(id) on delete restrict,
@@ -48,6 +61,11 @@ grant select on public.reachr_conversations, public.reachr_messages, public.reac
 grant insert on public.reachr_reply_jobs to authenticated;
 grant all on public.reachr_conversations, public.reachr_messages, public.reachr_reply_jobs to service_role;
 
+drop policy if exists "Reachr operator can read conversations" on public.reachr_conversations;
+drop policy if exists "Reachr operator can read messages" on public.reachr_messages;
+drop policy if exists "Reachr operator can read jobs" on public.reachr_reply_jobs;
+drop policy if exists "Reachr operator can create drafts" on public.reachr_reply_jobs;
+drop policy if exists "Reachr operator can approve own draft" on public.reachr_reply_jobs;
 create policy "Reachr operator can read conversations" on public.reachr_conversations for select to authenticated using ((auth.jwt()->>'email') = 'wildejack1010@gmail.com' and marketplace_excluded = false);
 create policy "Reachr operator can read messages" on public.reachr_messages for select to authenticated using ((auth.jwt()->>'email') = 'wildejack1010@gmail.com' and exists (select 1 from public.reachr_conversations c where c.id = conversation_id and c.marketplace_excluded = false));
 create policy "Reachr operator can read jobs" on public.reachr_reply_jobs for select to authenticated using ((auth.jwt()->>'email') = 'wildejack1010@gmail.com' and exists (select 1 from public.reachr_conversations c where c.id = conversation_id and c.marketplace_excluded = false));
