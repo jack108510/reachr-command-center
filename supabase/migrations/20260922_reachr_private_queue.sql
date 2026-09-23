@@ -91,5 +91,5 @@ begin
   if not found then raise exception 'draft unavailable'; end if;
   return v_job;
 end $$;
-revoke all on function public.reachr_approve_draft(uuid) from public, anon;
-grant execute on function public.reachr_approve_draft(uuid) to authenticated;
+-- Approval remains unavailable until a verified sender/recipient worker and delivery audit exist.
+revoke all on function public.reachr_approve_draft(uuid) from public, anon, authenticated;
