@@ -23,7 +23,7 @@ create table if not exists public.reachr_contacts (
   source text not null default 'operator_verified_exact_messenger_thread',
   consent_status text not null default 'unknown',
   no_send boolean not null default true,
-  created_by uuid not null default auth.uid() references auth.users(id),
+  created_by uuid default auth.uid() references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint reachr_contact_email_source_check check (
@@ -61,7 +61,8 @@ begin
   end if;
   new.updated_at = now();
   return new;
-end $$;
+end $;
+revoke all on function public.reachr_contact_audit() from public, anon, authenticated;
 drop trigger if exists reachr_contact_audit_insert on public.reachr_contacts;
 drop trigger if exists reachr_contact_audit_update on public.reachr_contacts;
 create trigger reachr_contact_audit_insert after insert on public.reachr_contacts
@@ -102,7 +103,7 @@ with local_day as (
   select (now() at time zone 'America/Edmonton')::date as today
 ), days as (
   select gs::date as day from local_day,
-    generate_series(today - 13, today, interval '1 day') as gs
+    generate_series((today - 13)::timestamp, today::timestamp, interval '1 day') as gs
 ), daily_counts as (
   select (m.observed_at at time zone 'America/Edmonton')::date as day,
     count(*) filter (where m.direction = 'outbound') as sent,
