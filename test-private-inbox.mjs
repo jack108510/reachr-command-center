@@ -8,8 +8,9 @@ test('Messenger desk exposes review, search and exact thread handoff without a f
  assert.match(source,/Unverified preview/);
  assert.match(source,/\.tabs\.hidden\{display:none\}/);
  assert.match(source,/Saved draft/);
- assert.match(source,/Messenger threads · September 2026/);
- assert.match(source,/<option value="all">September confirmed sends<\/option>/);
+ assert.match(source,/Messenger threads · stored history/);
+ assert.match(source,/<option value="all">All confirmed sends<\/option>/);
+ assert.match(source,/September 2026 backfill; later records may appear/);
  assert.doesNotMatch(source,/Every September message captured/);
  assert.doesNotMatch(source,/id="approve"/);
  assert.match(source,/No automatic sending/);
