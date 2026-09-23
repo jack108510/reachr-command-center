@@ -10,5 +10,5 @@ test('Messenger desk exposes review, search and exact thread handoff without a f
  assert.doesNotMatch(source,/id="approve"/);
  assert.match(source,/No automatic sending/);
  for(const table of ['reachr_conversations','reachr_messages','reachr_reply_jobs']) assert.match(source,new RegExp(`from\\('${table}'\\)`));
- assert.doesNotMatch(source,/call\\('\\/(conversations|messages|jobs|drafts)/);
+ for(const route of ['conversations','messages','jobs','drafts']) assert.ok(!source.includes(`call('/${route}`));
 });
