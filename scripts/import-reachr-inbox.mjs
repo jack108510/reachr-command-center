@@ -7,7 +7,7 @@ const normalized=value=>String(value||'').trim().toLocaleLowerCase('en-US');
 const browserMonth=new Intl.DateTimeFormat('en-US',{timeZone:'America/Halifax',year:'numeric',month:'2-digit'});
 const localMonth=date=>{const parts=Object.fromEntries(browserMonth.formatToParts(date).map(x=>[x.type,x.value]));return `${parts.year}-${parts.month}`};
 function route(value){try{const url=new URL(value);if(url.protocol!=='https:')return null;if(url.hostname==='m.me'&&/^\/[\w.-]+\/?$/.test(url.pathname))return `https://m.me${url.pathname.replace(/\/$/,'')}`;if(!['www.messenger.com','messenger.com'].includes(url.hostname)||!/^\/t\/[\w-]+\/?$/.test(url.pathname))return null;return `https://www.messenger.com${url.pathname.replace(/\/$/,'')}/`}catch{return null}}
-function eligible(record){return ['messenger_confirmed','messenger_ui_confirmed'].includes(record.delivery)&&![record.sourceUrl,record.channel,record.source,record.surface,record.messagingSource].some(x=>/marketplace/i.test(String(x||'')))}
+function eligible(record){return ['messenger_confirmed','messenger_ui_confirmed'].includes(record.delivery)&&![record.sourceGroup,record.sourceEvidence,record.sourceUrl,record.channel,record.source,record.surface,record.messagingSource].some(x=>/marketplace/i.test(String(x||'')))}
 export async function applyImport(plan,{base,key,fetchImpl=fetch}={}){
  if(!base||!key)throw Error('missing_supabase_access');
  const origin=new URL(base);if(origin.origin!=='https://xacehhtgvubcqdoltazg.supabase.co')throw Error('wrong_supabase_project');
@@ -31,7 +31,7 @@ export async function applyImport(plan,{base,key,fetchImpl=fetch}={}){
  return {conversations:conversationCount,messages:messageCount};
 }
 
-export function planImport(archive,ledger,{month='2026-09',sourceTimezone=null}={}){
+export function planImport(archive,ledger,{month='2026-09',sourceTimezone=null,state=null}={}){
  if(!/^\d{4}-\d{2}$/.test(month))throw Error('invalid month');
  if(sourceTimezone&&sourceTimezone!==Intl.DateTimeFormat().resolvedOptions().timeZone)throw Error('browser_timezone_mismatch');
  const flatGroups=new Map();
@@ -63,13 +63,26 @@ export function planImport(archive,ledger,{month='2026-09',sourceTimezone=null}=
    if(!keys.has(external_key)){conversations.push({external_key,business_name:record.businessName,recipient_name:record.recipientName||null,messenger_url:key,source:'reachr_messenger_ledger_or_live',marketplace_excluded:false});keys.add(external_key)}
   }
  }
+ const aliases=new Map(),candidates=new Set();
+ for(const record of records)for(const alias of new Set([normalized(record.businessName),normalized(record.recipientName)].filter(Boolean)))aliases.set(alias,aliases.has(alias)?null:record);
+ for(const reply of Object.values(state?.seen||{}))if(String(reply?.preview||'').trim()&&reply?.classification?.reason!=='outbound_or_empty'&&![reply.sourceGroup,reply.sourceEvidence,reply.sourceUrl,reply.channel,reply.source,reply.surface].some(x=>/marketplace/i.test(String(x||'')))){
+  const record=aliases.get(normalized(reply.businessName));if(record)candidates.add(record);
+ }
+ for(const conversation of conversations){const record=byRoute.get(conversation.messenger_url)?.[0];conversation.review_candidate=candidates.has(record);conversation.verified_inbound=messages.some(x=>x.external_key===conversation.external_key&&x.direction==='inbound')}
  return {conversations,messages,rejected};
 }
 
+function writePrivateCache(target,plan,summary){const folder=path.dirname(target),dir=fs.statSync(folder);if(dir.uid!==process.getuid()||dir.mode&0o022)throw Error('cache_directory_not_private');if(fs.existsSync(target)){const prior=fs.lstatSync(target);if(!prior.isFile()||prior.mode&0o077||prior.uid!==process.getuid())throw Error('cache_target_not_private')}
+ const temp=path.join(folder,`.reachr-inbox-${crypto.randomUUID()}.tmp`);
+ try{fs.writeFileSync(temp,JSON.stringify({conversations:plan.conversations,messages:plan.messages,summary}),{mode:0o600,flag:'wx'});fs.renameSync(temp,target)}finally{if(fs.existsSync(temp))fs.unlinkSync(temp)}
+}
 async function main(args){const option=name=>{const i=args.indexOf(name);return i<0?null:args[i+1]},archivePath=option('--archive')||'/Users/jackserver/jsw/keys/reachr-september-messages.json',ledgerPath=option('--ledger')||'/Users/jackserver/wildrose-automations/reachr-outreach/prospects.json';
  const archive=JSON.parse(fs.readFileSync(archivePath,'utf8'));
- const plan=planImport(archive,JSON.parse(fs.readFileSync(ledgerPath,'utf8')),{month:option('--month')||'2026-09',sourceTimezone:option('--browser-timezone')||null});
+ const statePath=option('--state')||(option('--ledger')?null:'/Users/jackserver/wildrose-automations/reachr-outreach/reply-monitor-state.json');
+ const state=statePath?JSON.parse(fs.readFileSync(statePath,'utf8')):null;
+ const plan=planImport(archive,JSON.parse(fs.readFileSync(ledgerPath,'utf8')),{month:option('--month')||'2026-09',sourceTimezone:option('--browser-timezone')||null,state});
  const summary={mode:args.includes('--apply')?'apply':'dry-run',conversations:plan.conversations.length,messages:plan.messages.length,verifiedLive:plan.messages.filter(x=>x.provenance.startsWith('messenger_aria_label:')).length,ledgerOnly:plan.messages.filter(x=>x.provenance.startsWith('ledger_confirmed:')).length,rejected:plan.rejected.length,sourceCoverage:archive.candidateThreads==null?null:{candidateThreads:archive.candidateThreads,inspectedThreads:archive.inspectedThreads,historyExhausted:(archive.coverage||[]).filter(x=>x.historyExhausted).length,sourceErrors:archive.errors?.length||0,sourceQuarantine:archive.quarantine?.length||0}};
+ if(option('--cache'))writePrivateCache(option('--cache'),plan,summary);
  if(!args.includes('--apply')){console.log(JSON.stringify(summary));return}
  if(fs.statSync(archivePath).mode&0o077)throw Error('archive_not_private');
  const env=Object.fromEntries(fs.readFileSync('/Users/jackserver/jsw/keys/reachr-supabase.env','utf8').split('\n').filter(x=>x.includes('=')).map(x=>{const i=x.indexOf('=');return [x.slice(0,i),x.slice(i+1).trim().replace(/^['\"]|['\"]$/g,'')]}));

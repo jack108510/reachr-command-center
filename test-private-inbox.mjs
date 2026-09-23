@@ -7,6 +7,9 @@ test('Messenger desk exposes review, search and exact thread handoff without a f
  assert.match(source,/Review in Messenger/);
  assert.match(source,/Unverified preview/);
  assert.match(source,/Saved draft/);
+ assert.match(source,/Messenger threads · September 2026/);
+ assert.match(source,/<option value="all">September confirmed sends<\/option>/);
+ assert.doesNotMatch(source,/Every September message captured/);
  assert.doesNotMatch(source,/id="approve"/);
  assert.match(source,/No automatic sending/);
  for(const table of ['reachr_conversations','reachr_messages','reachr_reply_jobs']) assert.match(source,new RegExp(`from\\('${table}'\\)`));

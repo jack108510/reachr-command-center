@@ -17,7 +17,17 @@ test('plans one September Reachr thread and deduplicates identical rendered labe
 test('rejects unconfirmed or Marketplace threads and messages outside September',()=>{
  const archive={threads:[{messengerUrl:url,messages:[message,{...message,body:'October note',observedAt:'2026-10-01T12:00:00Z'}]}]};
  assert.equal(planImport(archive,{prospects:[{...ledger.prospects[0],sourceUrl:'https://www.facebook.com/marketplace/item/12'}]}).messages.length,0);
+ assert.equal(planImport(archive,{prospects:[{...ledger.prospects[0],sourceGroup:'Local Marketplace group'}]}).messages.length,0);
+ assert.equal(planImport(archive,{prospects:[{...ledger.prospects[0],sourceEvidence:'Marketplace listing'}]}).messages.length,0);
  assert.equal(planImport(archive,ledger).messages.length,1);
+});
+test('marks only source-verified inbound and separately marks unique reply-monitor previews for review',()=>{
+ const record={...ledger.prospects[0],sentMessage:'Confirmed note'};
+ const state={seen:{one:{businessName:'Atlas Books',preview:'Potential reply',classification:{reason:'interested'}}}};
+ const plan=planImport({threads:[{messengerUrl:url,messages:[message]}]},{prospects:[record]},{state});
+ assert.equal(plan.conversations.length,1);assert.equal(plan.conversations[0].verified_inbound,true);assert.equal(plan.conversations[0].review_candidate,true);
+ assert.equal(plan.messages.filter(x=>x.direction==='inbound').length,1);
+ const ledgerOnly=planImport({threads:[]},{prospects:[record]},{state});assert.equal(ledgerOnly.conversations[0].verified_inbound,false);assert.equal(ledgerOnly.conversations[0].review_candidate,true);assert.equal(ledgerOnly.messages.some(x=>x.direction==='inbound'),false);
 });
 test('adapts rendered-label archive only with independently verified browser timezone',()=>{
  const flat={messages:[{sourceUrl:url,timestamp:'September 12, 2026, 9:30 AM',speaker:'Atlas Books',body:'Live inbound',direction:'inbound',timezone:'unverified-browser-local',timestampPrecision:'minute',provenance:{kind:'messenger-rendered-aria-label'}}]};
@@ -68,7 +78,7 @@ test('writes each conversation before its id-linked messages and does not change
 });
 test('CLI dry run reports counts without printing private message body or requiring credentials',()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'reachr-import-test-'));
- try{const archive=path.join(dir,'archive.json'),ledgerPath=path.join(dir,'ledger.json');fs.writeFileSync(archive,JSON.stringify({threads:[{messengerUrl:url,messages:[message]}]}));fs.writeFileSync(ledgerPath,JSON.stringify(ledger));const proc=spawnSync(process.execPath,[new URL('./scripts/import-reachr-inbox.mjs',import.meta.url).pathname,'--archive',archive,'--ledger',ledgerPath],{encoding:'utf8'});assert.equal(proc.status,0,proc.stderr);assert.match(proc.stdout,/"messages":1/);assert.doesNotMatch(proc.stdout,/Can you send details\?/)}finally{fs.rmSync(dir,{recursive:true,force:true})}
+ try{const archive=path.join(dir,'archive.json'),ledgerPath=path.join(dir,'ledger.json');fs.writeFileSync(archive,JSON.stringify({threads:[{messengerUrl:url,messages:[message]}]}));fs.writeFileSync(ledgerPath,JSON.stringify(ledger));const proc=spawnSync(process.execPath,[new URL('./scripts/import-reachr-inbox.mjs',import.meta.url).pathname,'--archive',archive,'--ledger',ledgerPath,'--cache',path.join(dir,'normalized.json')],{encoding:'utf8'});assert.equal(proc.status,0,proc.stderr);assert.match(proc.stdout,/"messages":1/);assert.doesNotMatch(proc.stdout,/Can you send details\?/);const cache=path.join(dir,'normalized.json');assert.equal(fs.statSync(cache).mode&0o777,0o600);assert.equal(JSON.parse(fs.readFileSync(cache,'utf8')).messages.length,1)}finally{fs.rmSync(dir,{recursive:true,force:true})}
 });
 test('quarantines ambiguous inbound speakers, undated text, and other routes',()=>{
  const archive={threads:[{messengerUrl:url,messages:[{...message,speaker:'Someone else'},{...message,observedAt:null},{...message,body:'',speaker:'Atlas Books'}]},{messengerUrl:'https://www.messenger.com/t/other',messages:[message]}]};
