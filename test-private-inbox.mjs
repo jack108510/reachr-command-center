@@ -7,5 +7,6 @@ test('Messenger desk exposes review, search and exact thread handoff without a f
  assert.match(source,/Review in Messenger/);
  assert.match(source,/Unverified preview/);
  assert.match(source,/Saved draft/);
+ assert.doesNotMatch(source,/id="approve"/);
  assert.match(source,/No automatic sending/);
 });
