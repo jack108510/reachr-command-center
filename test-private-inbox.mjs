@@ -2,18 +2,39 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const source=fs.readFileSync(new URL('./private.html',import.meta.url),'utf8');
-test('Messenger inbox lists replied-to threads and shows their full stored exchange',()=>{
- for(const id of ['inboxSearch','inboxSummary','threadHeader','openMessenger','refreshInbox']) assert.match(source,new RegExp(`id="${id}"`));
+test('Messenger inbox lists replied-to threads and exposes a Supabase holding queue',()=>{
+ for(const id of ['inboxSearch','inboxSummary','threadHeader','openMessenger','refreshInbox','replyForm','replyText','queueReply','queueHistory']) assert.match(source,new RegExp(`id="${id}"`));
  assert.match(source,/Open in Messenger/);
  assert.match(source,/full exchange stored in Supabase/);
  assert.match(source,/\.tabs\.hidden\{display:none\}/);
- assert.match(source,/Read only · Replies cannot be sent/);
+ assert.match(source,/Nothing sends to Messenger yet/);
  assert.match(source,/\.eq\('direction','inbound'\)/);
  assert.match(source,/\.in\('id',\[\.\.\.replyCounts\.keys\(\)\]\)/);
  assert.match(source,/selectedMessages\.map\(m=>/);
  assert.doesNotMatch(source,/id="inboxFilter"|id="toggleSent"/);
  assert.match(source,/setInterval\(\(\)=>\{if\(!document\.hidden/);
- for(const table of ['reachr_conversations','reachr_messages']) assert.match(source,new RegExp(`from\\('${table}'\\)`));
- assert.doesNotMatch(source,/id="draft"|id="saveDraft"|from\('reachr_reply_jobs'\)/);
+ for(const table of ['reachr_conversations','reachr_messages','reachr_reply_jobs']) assert.match(source,new RegExp(`from\\('${table}'\\)`));
+ assert.doesNotMatch(source,/reachr_approve_draft|\.update\(\{status:\s*'approved'/);
  for(const route of ['conversations','messages','jobs','drafts']) assert.ok(!source.includes(`call('/${route}`));
+});
+test('queue action stores an exact draft for the selected conversation without sending',async()=>{
+ const definition=source.match(/async function queueReply\(event\)\{[\s\S]*?\n\}/)?.[0];
+ assert.ok(definition);
+ const elements={replyText:{value:'  Thanks for replying.  '},queueReply:{disabled:false},queueStatus:{textContent:''}};
+ const inserts=[],loads=[];
+ const sb={auth:{getSession:async()=>({data:{session:{user:{id:'operator-id'}}}})},from:table=>{
+   assert.equal(table,'reachr_reply_jobs');
+   return {insert:async payload=>{inserts.push(payload);return {error:null}}};
+ }};
+ const selected={id:'conversation-id'};
+ const drafts=new Map([['conversation-id',elements.replyText.value]]);
+ const loadQueue=async id=>loads.push(id);
+ const action=new Function('sb','elements','selected','localCompositions','loadQueue',`let queueBusy=false;const $=id=>elements[id];${definition};return queueReply`)(sb,elements,selected,drafts,loadQueue);
+ let prevented=false;
+ await action({preventDefault(){prevented=true}});
+ assert.equal(prevented,true);
+ assert.deepEqual(inserts,[{conversation_id:'conversation-id',body:'Thanks for replying.',status:'draft',created_by:'operator-id'}]);
+ assert.deepEqual(loads,['conversation-id']);
+ assert.equal(elements.replyText.value,'');
+ assert.match(elements.queueStatus.textContent,/Not sent to Messenger/);
 });
