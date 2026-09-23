@@ -10,7 +10,21 @@
 </main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="private-config.js"></script><script>
 const cfg=window.REACHR_SUPABASE, sb=window.supabase.createClient(cfg.url,cfg.publishableKey),API='https://n8n.wildeautomations.com/reachr-inbox';let selected=null,job=null;
 const $=id=>document.getElementById(id);const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-async function call(route,method='GET',body){const {data:{session}}=await sb.auth.getSession();if(!session)throw Error('Sign in required');const r=await fetch(API+route,{method,headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:body&&JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.error||`API ${r.status}`);return data}
+async function call(route,method='GET',body){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session)throw Error('Sign in required');
+  const request=token=>fetch(API+route,{method,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:body&&JSON.stringify(body)});
+  let response=await request(session.access_token);
+  if(response.status===401&&method==='GET'){
+    const {data,error}=await sb.auth.refreshSession();
+    if(!error&&data.session)response=await request(data.session.access_token);
+  }
+  if(response.status===401)throw Error('The inbox could not verify your sign-in. Sign out and enter your password again. If this continues, the inbox connection needs repair.');
+  let data;
+  try{data=await response.json()}catch{throw Error('The inbox service returned an invalid response. Try again shortly.')}
+  if(!response.ok)throw Error(data.error||`Inbox service error ${response.status}`);
+  return data;
+}
 let activeTab='crm';
 function showTab(tab,authenticated){activeTab=tab;$('tabs').classList.toggle('hidden',!authenticated);$('crm').classList.toggle('hidden',!authenticated||tab!=='crm');$('app').classList.toggle('hidden',!authenticated||tab!=='inbox');$('tabCrm').classList.toggle('active',tab==='crm');$('tabCrm').classList.toggle('secondary',tab!=='crm');$('tabInbox').classList.toggle('active',tab==='inbox');$('tabInbox').classList.toggle('secondary',tab!=='inbox')}
 async function session(){const{data:{session}}=await sb.auth.getSession();$('auth').classList.toggle('hidden',!!session);$('signOut').classList.toggle('hidden',!session);showTab(activeTab,!!session);window.parent.postMessage({type:'reachr-inbox-size',authenticated:!!session},location.origin);if(session)await (activeTab==='crm'?loadCrm():load());}
