@@ -61,7 +61,7 @@ begin
   end if;
   new.updated_at = now();
   return new;
-end $;
+end $$;
 revoke all on function public.reachr_contact_audit() from public, anon, authenticated;
 drop trigger if exists reachr_contact_audit_insert on public.reachr_contacts;
 drop trigger if exists reachr_contact_audit_update on public.reachr_contacts;
