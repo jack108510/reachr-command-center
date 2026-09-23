@@ -11,9 +11,11 @@
     return;
   }
   const client = window.supabase.createClient(config.url, config.publishableKey);
+  window.reachrSupabaseClient = client;
   function show(open) {
     gate.hidden = open;
     main.hidden = !open;
+    if (open) window.dispatchEvent(new Event('reachr-auth-open'));
     if (!open) frame.removeAttribute('src');
     if (open && location.hash === '#inbox' && !frame.getAttribute('src')) {
       frame.src = 'private.html?v=pilot-password-1';
