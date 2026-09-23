@@ -2,18 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const source=fs.readFileSync(new URL('./private.html',import.meta.url),'utf8');
-test('Messenger desk exposes review, search and exact thread handoff without a fake send button',()=>{
- for(const id of ['inboxSearch','inboxFilter','inboxSummary','threadHeader','openMessenger','draftHistory']) assert.match(source,new RegExp(`id="${id}"`));
- assert.match(source,/Review in Messenger/);
- assert.match(source,/Unverified preview/);
+test('Messenger reading view shows stored conversations and refreshes without a composer',()=>{
+ for(const id of ['inboxSearch','inboxFilter','inboxSummary','threadHeader','openMessenger','refreshInbox']) assert.match(source,new RegExp(`id="${id}"`));
+ assert.match(source,/Open in Messenger/);
+ assert.match(source,/Stored history may be incomplete/);
  assert.match(source,/\.tabs\.hidden\{display:none\}/);
- assert.match(source,/Saved draft/);
- assert.match(source,/Messenger threads · stored history/);
- assert.match(source,/<option value="all">All confirmed sends<\/option>/);
- assert.match(source,/September 2026 backfill; later records may appear/);
- assert.doesNotMatch(source,/Every September message captured/);
- assert.doesNotMatch(source,/id="approve"/);
- assert.match(source,/No automatic sending/);
- for(const table of ['reachr_conversations','reachr_messages','reachr_reply_jobs']) assert.match(source,new RegExp(`from\\('${table}'\\)`));
+ assert.match(source,/Read only · Replies cannot be sent/);
+ assert.match(source,/<option value="all">All conversations<\/option>/);
+ assert.match(source,/setInterval\(\(\)=>\{if\(!document\.hidden/);
+ for(const table of ['reachr_conversations','reachr_messages']) assert.match(source,new RegExp(`from\\('${table}'\\)`));
+ assert.doesNotMatch(source,/id="draft"|id="saveDraft"|from\('reachr_reply_jobs'\)/);
  for(const route of ['conversations','messages','jobs','drafts']) assert.ok(!source.includes(`call('/${route}`));
 });
