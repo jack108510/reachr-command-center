@@ -12,6 +12,8 @@ create table if not exists public.reachr_conversations (
   messenger_url text,
   source text not null default 'reachr_local_ledger',
   marketplace_excluded boolean not null default false,
+  review_candidate boolean not null default false,
+  verified_inbound boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -29,6 +31,8 @@ create table if not exists public.reachr_messages (
 alter table public.reachr_conversations add column if not exists recipient_name text;
 alter table public.reachr_conversations add column if not exists sender_actor_id text;
 alter table public.reachr_conversations add column if not exists sender_actor_name text;
+alter table public.reachr_conversations add column if not exists review_candidate boolean not null default false;
+alter table public.reachr_conversations add column if not exists verified_inbound boolean not null default false;
 alter table public.reachr_conversations alter column source set default 'reachr_local_ledger';
 do $$ begin
   if not exists (select 1 from pg_constraint where conrelid='public.reachr_messages'::regclass and contype='u' and conkey=array[
