@@ -6,6 +6,7 @@ test('Messenger desk exposes review, search and exact thread handoff without a f
  for(const id of ['inboxSearch','inboxFilter','inboxSummary','threadHeader','openMessenger','draftHistory']) assert.match(source,new RegExp(`id="${id}"`));
  assert.match(source,/Review in Messenger/);
  assert.match(source,/Unverified preview/);
+ assert.match(source,/\.tabs\.hidden\{display:none\}/);
  assert.match(source,/Saved draft/);
  assert.match(source,/Messenger threads · September 2026/);
  assert.match(source,/<option value="all">September confirmed sends<\/option>/);
