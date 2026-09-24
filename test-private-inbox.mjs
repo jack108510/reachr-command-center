@@ -2,18 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const source=fs.readFileSync(new URL('./private.html',import.meta.url),'utf8');
-test('Messenger inbox lists replied-to threads and exposes a Supabase holding queue',()=>{
- for(const id of ['inboxSearch','inboxSummary','threadHeader','openMessenger','refreshInbox','replyForm','replyText','queueReply','queueHistory']) assert.match(source,new RegExp(`id="${id}"`));
+test('Messenger inbox exposes a queue and a private Script Library',()=>{
+ for(const id of ['inboxSearch','inboxSummary','threadHeader','openMessenger','refreshInbox','replyForm','replyText','queueReply','queueHistory','tabLibrary','scriptList','scriptForm','templatePicker']) assert.match(source,new RegExp(`id="${id}"`));
  assert.match(source,/Open in Messenger/);
  assert.match(source,/full exchange stored in Supabase/);
  assert.match(source,/\.tabs\.hidden\{display:none\}/);
- assert.match(source,/Nothing sends to Messenger yet/);
+ assert.match(source,/nothing sends to Messenger yet/i);
  assert.match(source,/\.eq\('direction','inbound'\)/);
  assert.match(source,/\.in\('id',\[\.\.\.replyCounts\.keys\(\)\]\)/);
  assert.match(source,/selectedMessages\.map\(m=>/);
  assert.doesNotMatch(source,/id="inboxFilter"|id="toggleSent"/);
  assert.match(source,/setInterval\(\(\)=>\{if\(!document\.hidden/);
- for(const table of ['reachr_conversations','reachr_messages','reachr_reply_jobs']) assert.match(source,new RegExp(`from\\('${table}'\\)`));
+ for(const table of ['reachr_conversations','reachr_messages','reachr_reply_jobs','reachr_script_templates']) assert.match(source,new RegExp(`from\\('${table}'\\)`));
  assert.doesNotMatch(source,/reachr_approve_draft|\.update\(\{status:\s*'approved'/);
  for(const route of ['conversations','messages','jobs','drafts']) assert.ok(!source.includes(`call('/${route}`));
 });
@@ -37,4 +37,20 @@ test('queue action stores an exact draft for the selected conversation without s
  assert.deepEqual(loads,['conversation-id']);
  assert.equal(elements.replyText.value,'');
  assert.match(elements.queueStatus.textContent,/Not sent to Messenger/);
+ elements.replyText.value='Hello [area]';
+ await action({preventDefault(){}});
+ assert.equal(inserts.length,1);
+ assert.match(elements.queueStatus.textContent,/Replace the \[placeholders\]/);
+});
+test('a script fills the selected reply without overwriting existing text',()=>{
+ const definition=source.match(/function applyScript\(script\)\{[\s\S]*?\n\}/)?.[0];
+ assert.ok(definition);
+ const elements={replyText:{value:''},queueStatus:{textContent:''},scriptStatus:{textContent:''}};
+ const drafts=new Map();
+ const apply=new Function('elements','selected','localCompositions',`const $=id=>elements[id];${definition};return applyScript`)(elements,{id:'thread-1',business_name:'Example Bakery'},drafts);
+ assert.equal(apply({body:'A plan for [business] in [area].'}),true);
+ assert.equal(elements.replyText.value,'A plan for Example Bakery in [area].');
+ assert.equal(drafts.get('thread-1'),elements.replyText.value);
+ assert.equal(apply({body:'Another script'}),false);
+ assert.equal(elements.replyText.value,'A plan for Example Bakery in [area].');
 });
