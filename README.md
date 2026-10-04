@@ -1,6 +1,8 @@
-# Reachr Command Center
+# Wildrose Outreach Dashboard
 
 Public, privacy-safe dashboard showing aggregate Messenger outreach totals. It intentionally excludes prospect names, source evidence, message content, and local paths.
+
+The signed-in workspace includes Overview, Contacts / CRM and inbox, Outreach operations, and Meta analytics. Outreach operations and Meta analytics read the private local Reachr server using the existing Supabase session for owner authentication; the Graph API token stays on that server and is never published in this GitHub Pages repository. Meta currently provides ad account totals, campaign delivery, Page audience, recent posts, and share counts; reaction, comment, and post-view metrics are unavailable to this token. The operations view shows confirmed sends, sender blockers, verified replies, and Page posting status; actual Messenger sending still requires the owning account to pass its identity checks. Wildrose branding uses the logo hosted by `wildroseautomations.ca`.
 
 ## Supabase inbox
 

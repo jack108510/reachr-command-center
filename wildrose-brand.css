@@ -1,0 +1,14 @@
+:root{--send:#ff8a51;--reply:#ffc18a;--positive:#f7c365;--brand:#ff8a51;--blue:#ffc18a}
+body{background:radial-gradient(850px 460px at 85% -10%,#382117 0%,transparent 62%),#080a0e}
+header{border-bottom-color:#493125}
+.eyebrow,.tag{color:var(--send)}
+.wildrose-identity{display:flex;align-items:center;gap:10px;margin-bottom:14px;color:#f7f0e9;font-weight:800;font-size:14px;letter-spacing:.01em}
+.wildrose-identity img{width:36px;height:36px;object-fit:contain;background:#15110e;border:1px solid #5a3827;border-radius:9px;padding:3px}
+.primary{border-color:#865037;background:linear-gradient(135deg,#38241b,#171310)}
+.reachr-tab.active{border-color:#a55f3c;color:#ffb18b;background:#38231a}
+.pilot-card button,#lockSite{background:#ff8a51;color:#170c07}
+.pilot-card{border-color:#503226}
+.meta-card,.operations-card{border-color:#3a2d28}
+.operations-card .warning,.meta-warning{color:#f7c365}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid:#ff9e6d;outline-offset:2px}
+@media(max-width:530px){.reachr-nav{flex-wrap:wrap}.reachr-tab{flex:1 1 42%}}
