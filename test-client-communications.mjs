@@ -5,14 +5,14 @@ import vm from 'node:vm';
 
 const source = fs.readFileSync(new URL('./operations.js', import.meta.url), 'utf8');
 
-test('client communications prioritizes verified replies and links to exact private threads', () => {
+test('client communications prioritizes verified replies and requires confirmation to send', async () => {
   const elements = new Map();
   function element(id) {
     if (!elements.has(id)) elements.set(id, {
-      id, innerHTML: '', textContent: '', value: '', hidden: false, listeners: {},
+      id, innerHTML: '', textContent: '', value: '', hidden: false, listeners: {}, dataset: {},
       classList: { add() {}, remove() {} },
       addEventListener(type, callback) { this.listeners[type] = callback; },
-      setAttribute() {}, insertBefore() {}, after() {}, querySelectorAll() { return []; },
+      setAttribute() {}, insertBefore() {}, after() {}, querySelectorAll() { return []; }, scrollIntoView() {},
     });
     return elements.get(id);
   }
@@ -22,16 +22,32 @@ test('client communications prioritizes verified replies and links to exact priv
     getElementById: element,
     querySelector: selector => selector === '.reachr-nav' ? element('nav') : element('main'),
   };
+  let confirmed = false;
+  const requests = [];
+  const conversation = {
+    id: 'a'.repeat(24), businessName: '<Client>', recipientName: 'Sam', accounts: ['Jack'],
+    status: 'interested', note: '', replyPending: true, verifiedReplyCount: 1,
+    messages: [{ direction: 'inbound', body: 'Can we talk?', observedAt: '2026-10-06T11:00:00Z' }],
+    candidatePreviews: [], replySenders: [{ key: 'verified-jack', name: 'Jack' }],
+    replyDraft: 'Thanks for replying.',
+  };
   const context = vm.createContext({
     document,
-    window: { addEventListener() {}, wildroseInitialSection: '' },
+    window: {
+      addEventListener() {}, wildroseInitialSection: '', confirm: () => confirmed,
+      reachrSupabaseClient: { auth: { getSession: async () => ({ data: { session: { access_token: 'test-owner' } } }) } },
+    },
     history: { replaceState() {} },
     location: { hash: '' },
     setInterval() {},
+    fetch: async (url, options) => {
+      requests.push({ url, options });
+      return { ok: true, json: async () => url.endsWith('/reply') ? { status: 'confirmed' } : conversation };
+    },
     URL,
     Date,
   });
-  const instrumented = source.replace(/\}\)\(\);\s*$/, 'globalThis.renderForTest = render;})();');
+  const instrumented = source.replace(/\}\)\(\);\s*$/, 'globalThis.renderForTest = render;globalThis.renderDetailForTest = renderDetail;})();');
   assert.notEqual(instrumented, source);
   vm.runInContext(instrumented, context);
 
@@ -51,6 +67,8 @@ test('client communications prioritizes verified replies and links to exact priv
   assert.match(element('operationsContent').innerHTML, /Client follow-ups/);
   assert.match(element('operationsContent').innerHTML, /Sender and Page operations/);
   assert.match(element('clientRows').innerHTML, /#conversation=aaaaaaaaaaaaaaaaaaaaaaaa/);
+  assert.match(element('clientRows').innerHTML, /Open here/);
+  assert.match(element('operationsContent').innerHTML, /Open and reply here/);
   assert.match(element('clientRows').innerHTML, /Verified reply waiting/);
   assert.match(element('clientRows').innerHTML, /&lt;Client&gt;/);
   assert.doesNotMatch(element('clientRows').innerHTML, /<Client>/);
@@ -61,4 +79,30 @@ test('client communications prioritizes verified replies and links to exact priv
   assert.doesNotMatch(element('clientRows').innerHTML, /Verified reply waiting/);
   element('clientSearch').listeners.input({ target: { value: 'missing' } });
   assert.match(element('clientRows').innerHTML, /No conversations match/);
+
+  context.renderDetailForTest(conversation);
+  assert.match(element('clientDetail').innerHTML, /Verified inbound/);
+  assert.match(element('clientDetail').innerHTML, /Review and send/);
+  element('clientStatus').value = 'waiting';
+  element('clientNote').value = 'Follow up on Tuesday';
+  await element('saveClient').listeners.click();
+  const save = requests.find(request => request.options.method === 'PATCH');
+  assert(save);
+  assert.deepEqual(JSON.parse(save.options.body), { status: 'waiting', note: 'Follow up on Tuesday' });
+  requests.length = 0;
+  element('clientReplyText').value = 'An exact reply';
+  element('clientReplySender').value = 'verified-jack';
+  await element('clientSend').listeners.click();
+  assert.equal(requests.length, 0, 'declining confirmation must not contact the server');
+
+  confirmed = true;
+  await element('clientSend').listeners.click();
+  const send = requests.find(request => request.url.endsWith('/reply'));
+  assert(send);
+  assert.equal(send.options.method, 'POST');
+  assert.deepEqual(JSON.parse(send.options.body), { senderKey: 'verified-jack', text: 'An exact reply' });
+  assert.equal(send.options.headers.Authorization, 'Bearer test-owner');
+  assert.equal(element('clientReplyText').value, '');
+  context.renderDetailForTest({ ...conversation, replyPending: false, replySenders: [] });
+  assert.doesNotMatch(element('clientDetail').innerHTML, /id="clientSend"/);
 });
