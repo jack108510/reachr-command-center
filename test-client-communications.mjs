@@ -11,7 +11,7 @@ test('client communications prioritizes verified replies and requires confirmati
     if (!elements.has(id)) elements.set(id, {
       id, innerHTML: '', textContent: '', value: '', hidden: false, listeners: {}, dataset: {},
       classList: { add() {}, remove() {} },
-      addEventListener(type, callback) { this.listeners[type] = callback; },
+      addEventListener(type, callback) { this.listeners[type] = callback; }, click() { this.listeners.click?.(); },
       setAttribute() {}, insertBefore() {}, after() {}, querySelectorAll() { return []; }, scrollIntoView() {},
     });
     return elements.get(id);
@@ -34,7 +34,7 @@ test('client communications prioritizes verified replies and requires confirmati
   const context = vm.createContext({
     document,
     window: {
-      addEventListener() {}, wildroseInitialSection: '', confirm: () => confirmed,
+      addEventListener() {}, wildroseInitialSection: '#overview', confirm: () => confirmed,
       reachrSupabaseClient: { auth: { getSession: async () => ({ data: { session: { access_token: 'test-owner' } } }) } },
     },
     history: { replaceState() {} },
@@ -47,7 +47,7 @@ test('client communications prioritizes verified replies and requires confirmati
     URL,
     Date,
   });
-  const instrumented = source.replace(/\}\)\(\);\s*$/, 'globalThis.renderForTest = render;globalThis.renderDetailForTest = renderDetail;})();');
+  const instrumented = source.replace(/\}\)\(\);\s*$/, 'globalThis.renderForTest = render;globalThis.renderDetailForTest = renderDetail;globalThis.showStoredArchiveFallbackForTest = showStoredArchiveFallback;})();');
   assert.notEqual(instrumented, source);
   vm.runInContext(instrumented, context);
 
@@ -64,7 +64,8 @@ test('client communications prioritizes verified replies and requires confirmati
     senders: [], actions: [], pages: [],
   });
 
-  assert.match(element('operationsContent').innerHTML, /Client follow-ups/);
+  assert.match(element('operationsContent').innerHTML, /Recorded conversations/);
+  assert.match(element('operationsContent').innerHTML, /All sender accounts/);
   assert.match(element('operationsContent').innerHTML, /Sender and Page operations/);
   assert.match(element('clientRows').innerHTML, /#conversation=aaaaaaaaaaaaaaaaaaaaaaaa/);
   assert.match(element('clientRows').innerHTML, /Open here/);
@@ -73,6 +74,11 @@ test('client communications prioritizes verified replies and requires confirmati
   assert.match(element('clientRows').innerHTML, /&lt;Client&gt;/);
   assert.doesNotMatch(element('clientRows').innerHTML, /<Client>/);
   assert.ok(element('clientRows').innerHTML.indexOf('Verified reply waiting') < element('clientRows').innerHTML.indexOf('Review Co'));
+
+  element('senderFilter').listeners.change({ target: { value: 'Other sender' } });
+  assert.match(element('clientRows').innerHTML, /No conversations match/);
+  element('senderFilter').listeners.change({ target: { value: 'Jack' } });
+  assert.match(element('clientRows').innerHTML, /Review Co/);
 
   element('clientFilter').listeners.change({ target: { value: 'review' } });
   assert.match(element('clientRows').innerHTML, /Review Co/);
@@ -105,4 +111,13 @@ test('client communications prioritizes verified replies and requires confirmati
   assert.equal(element('clientReplyText').value, '');
   context.renderDetailForTest({ ...conversation, replyPending: false, replySenders: [] });
   assert.doesNotMatch(element('clientDetail').innerHTML, /id="clientSend"/);
+
+  context.window.reachrSupabaseClient.from = table => {
+    assert.equal(table, 'reachr_conversations');
+    return { select() { return this; }, eq() { return this; }, order() { return this; }, async limit() { return { data: [{ business_name: 'Archived Co', recipient_name: 'Pat', sender_actor_name: 'Jack', messenger_url: 'https://www.messenger.com/t/123', updated_at: '2026-10-06T11:00:00Z' }], error: null }; } };
+  };
+  await context.showStoredArchiveFallbackForTest(new Error('offline'));
+  assert.match(element('operationsContent').innerHTML, /Live sender accounts are offline/);
+  assert.match(element('archiveRows').innerHTML, /Archived Co/);
+  assert.doesNotMatch(element('operationsContent').innerHTML, /Review and send/);
 });

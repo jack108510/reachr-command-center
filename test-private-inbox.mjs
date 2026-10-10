@@ -3,13 +3,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const source=fs.readFileSync(new URL('./private.html',import.meta.url),'utf8');
 test('Messenger inbox exposes a queue and a private Script Library',()=>{
- for(const id of ['inboxSearch','inboxSummary','threadHeader','openMessenger','refreshInbox','replyForm','replyText','queueReply','queueHistory','tabLibrary','scriptList','scriptForm','templatePicker']) assert.match(source,new RegExp(`id="${id}"`));
+ for(const id of ['inboxSearch','inboxSenderFilter','inboxTypeFilter','inboxSummary','threadHeader','openMessenger','refreshInbox','replyForm','replyText','queueReply','queueHistory','tabLibrary','scriptList','scriptForm','templatePicker']) assert.match(source,new RegExp(`id="${id}"`));
  assert.match(source,/Open in Messenger/);
  assert.match(source,/full exchange stored in Supabase/);
  assert.match(source,/\.tabs\.hidden\{display:none\}/);
  assert.match(source,/nothing sends to Messenger yet/i);
  assert.match(source,/\.eq\('direction','inbound'\)/);
- assert.match(source,/\.in\('id',\[\.\.\.replyCounts\.keys\(\)\]\)/);
+ assert.match(source,/\.eq\('marketplace_excluded',false\)\.order\('updated_at'/);
+ assert.doesNotMatch(source,/\.in\('id',\[\.\.\.replyCounts\.keys\(\)\]\)/);
+ assert.match(source,/sender_actor_name/);
  assert.match(source,/selectedMessages\.map\(m=>/);
  assert.doesNotMatch(source,/id="inboxFilter"|id="toggleSent"/);
  assert.match(source,/setInterval\(\(\)=>\{if\(!document\.hidden/);

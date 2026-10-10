@@ -5,14 +5,14 @@
   tab.id = 'operationsTab';
   tab.className = 'reachr-tab';
   tab.type = 'button';
-  tab.textContent = 'Client communications';
+  tab.textContent = 'Messenger hub';
   tab.setAttribute('aria-selected', 'false');
-  nav.insertBefore(tab, document.getElementById('metaTab'));
+  nav.insertBefore(tab, document.getElementById('overviewTab'));
 
   const panel = document.createElement('section');
   panel.id = 'operationsPanel';
   panel.hidden = true;
-  panel.innerHTML = '<div class="chart-card"><div class="chart-header"><div><div class="label">Verified Messenger activity</div><h2>Client communications</h2></div><button class="reachr-tab" id="refreshOperations" type="button">Refresh</button></div><p class="caption" id="operationsStatus">Open this tab to check replies and follow-ups.</p><section id="clientDetail" class="operations-client-detail" hidden></section><div id="operationsContent"></div></div>';
+  panel.innerHTML = '<div class="chart-card"><div class="chart-header"><div><div class="label">Sender accounts · one workspace</div><h2>Messenger hub</h2><p class="caption">Search recorded chats, review replies, manage follow-ups, and open the exact Messenger thread.</p></div><button class="reachr-tab" id="refreshOperations" type="button">Refresh</button></div><p class="caption" id="operationsStatus">Checking connected sender accounts…</p><section id="clientDetail" class="operations-client-detail" hidden></section><div id="operationsContent"></div></div>';
   document.getElementById('metaPanel').after(panel);
 
   const style = document.createElement('style');
@@ -33,7 +33,9 @@
   let lastLoaded = 0;
   let currentData = null;
   let clientQuery = '';
-  let clientFilter = 'action';
+  let clientFilter = 'all';
+  let senderFilter = 'all';
+  let visibleCount = 100;
   let selectedClientId = null;
   let detailBusy = false;
 
@@ -141,15 +143,17 @@
       if (clientFilter === 'action' && !conversation.replyPending && conversation.status !== 'needs_review' && conversation.status !== 'interested') return false;
       if (clientFilter === 'replies' && !conversation.replyPending) return false;
       if (clientFilter === 'review' && conversation.status !== 'needs_review') return false;
+      if (senderFilter !== 'all' && !(conversation.accounts || []).includes(senderFilter)) return false;
       return !query || [conversation.businessName, conversation.recipientName, ...(conversation.accounts || [])].join(' ').toLowerCase().includes(query);
     }).sort((left, right) => Number(Boolean(right.replyPending)) - Number(Boolean(left.replyPending)) || Number(right.status === 'needs_review') - Number(left.status === 'needs_review') || Date.parse(right.updatedAt || 0) - Date.parse(left.updatedAt || 0));
-    document.getElementById('clientCount').textContent = `${number(rows.length)} matching conversations · first ${number(Math.min(rows.length, 100))} shown`;
-    document.getElementById('clientRows').innerHTML = rows.slice(0, 100).map(conversation => {
+    document.getElementById('clientCount').textContent = `${number(rows.length)} recorded conversations · ${number(Math.min(rows.length, visibleCount))} shown`;
+    document.getElementById('clientRows').innerHTML = rows.slice(0, visibleCount).map(conversation => {
       const privateUrl = `https://n8n.wildeautomations.com/reachr-command-center/#conversation=${encodeURIComponent(conversation.id)}`;
       const messengerUrl = safeMessenger(conversation.messengerUrl);
       const state = conversation.replyPending ? 'Verified reply waiting' : conversation.status === 'needs_review' ? 'Needs review' : conversation.status === 'interested' ? 'Interested' : conversation.status === 'waiting' ? 'Waiting' : conversation.status === 'closed' ? 'Closed' : 'Awaiting reply';
       return `<div class="operations-row"><strong>${escapeHtml(conversation.businessName)}</strong> · ${escapeHtml(state)}<small>${escapeHtml(conversation.recipientName || 'Recipient unconfirmed')} · ${escapeHtml((conversation.accounts || []).join(', ') || 'Sender unknown')} · Last activity ${escapeHtml(date(conversation.updatedAt))}</small>${conversation.replyPending ? `<small>${escapeHtml(conversation.lastVerifiedInboundText || 'Verified inbound message')} · Detected ${escapeHtml(date(conversation.lastVerifiedInboundAt))}</small>` : ''}${conversation.candidateCount ? `<small>${number(conversation.candidateCount)} unverified preview(s) need checking in Messenger.</small>` : ''}<button type="button" data-client-id="${escapeHtml(conversation.id)}">Open here</button><a href="${escapeHtml(privateUrl)}" target="_blank" rel="noopener noreferrer">Private fallback ↗</a>${messengerUrl ? `<a href="${escapeHtml(messengerUrl)}" target="_blank" rel="noopener noreferrer">Open Messenger ↗</a>` : ''}</div>`;
     }).join('') || '<p class="caption">No conversations match this view.</p>';
+    document.getElementById('showMoreClients').hidden = rows.length <= visibleCount;
   }
 
   function render(data) {
@@ -159,18 +163,48 @@
     const totals = `<div class="operations-totals"><div class="operations-total">Confirmed today<strong>${number(data.overview.confirmedToday)}</strong></div><div class="operations-total">Replies waiting<strong>${number(data.overview.repliesWaiting)}</strong></div><div class="operations-total">Needs action<strong>${number(data.overview.needsAction)}</strong></div></div>`;
     const senders = `<section class="operations-section"><h3>Messenger senders</h3><div class="operations-grid">${data.senders.map(sender => `<article class="operations-card"><h3>${escapeHtml(sender.name)}</h3><p>${number(sender.confirmedToday)} confirmed today · ${number(sender.totalConfirmed)} total · ${number(sender.eligible)} eligible</p><p>Window: ${escapeHtml(sender.campaignState)} · Connection: ${escapeHtml(sender.connection)} · Reply checks: ${escapeHtml(sender.replyStatus)}</p><p>Last confirmed: ${escapeHtml(date(sender.lastConfirmedAt))}</p>${sender.blockers.length ? `<p class="warning">${sender.blockers.map(escapeHtml).join(' · ')}</p>` : ''}</article>`).join('')}</div></section>`;
     const replies = `<section class="operations-section"><h3>Verified replies waiting</h3>${data.replyInbox.length ? data.replyInbox.map(reply => { const conversation = conversations.get(reply.conversationId); const url = safeMessenger(conversation?.messengerUrl); return `<div class="operations-row"><strong>${escapeHtml(reply.businessName)}</strong> · ${escapeHtml(reply.sender)}<small>${escapeHtml(reply.preview)} · Detected ${escapeHtml(date(reply.detectedAt))}</small><button type="button" data-client-id="${escapeHtml(reply.conversationId)}">Open and reply here</button>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open Messenger ↗</a>` : ''}</div>`; }).join('') : '<p class="caption">No verified replies waiting.</p>'}</section>`;
-    const clients = `<section class="operations-section"><h3>Client follow-ups</h3><p class="caption">Open a recorded thread here to update its status, write a note, or send an eligible verified reply. Check Messenger for complete context.</p><div class="operations-tools"><input id="clientSearch" type="search" aria-label="Search client conversations" placeholder="Search business, contact, or sender" value="${escapeHtml(clientQuery)}"><select id="clientFilter" aria-label="Filter client conversations"><option value="action">Needs attention</option><option value="replies">Verified replies</option><option value="review">Needs review</option><option value="all">All conversations</option></select></div><p id="clientCount" class="caption"></p><div id="clientRows"></div></section>`;
+    const accountNames = [...new Set((data.conversations || []).flatMap(conversation => conversation.accounts || []))].sort();
+    const senderOptions = accountNames.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+    const clients = `<section class="operations-section"><h3>Recorded conversations</h3><p class="caption">This view includes conversations recorded by the outreach system. Personal Messenger inboxes may contain additional chats. Open Messenger for complete context.</p><div class="operations-tools"><input id="clientSearch" type="search" aria-label="Search Messenger conversations" placeholder="Search business, contact, or sender" value="${escapeHtml(clientQuery)}"><select id="senderFilter" aria-label="Filter by Facebook account"><option value="all">All sender accounts</option>${senderOptions}</select><select id="clientFilter" aria-label="Filter conversations"><option value="all">All recorded chats</option><option value="action">Needs attention</option><option value="replies">Verified replies</option><option value="review">Needs review</option></select></div><p id="clientCount" class="caption"></p><div id="clientRows"></div><button id="showMoreClients" type="button" class="reachr-tab" hidden>Show more conversations</button></section>`;
     const actions = `<section class="operations-section"><h3>Needs action</h3>${data.actions.length ? data.actions.map(action => `<div class="operations-row"><strong>${escapeHtml(action.title)}</strong>${action.detail ? `<small>${escapeHtml(action.detail)}</small>` : ''}</div>`).join('') : '<p class="caption">No active issues recorded.</p>'}</section>`;
     const pages = `<section class="operations-section"><h3>Page posting</h3><div class="operations-grid">${data.pages.map(page => `<article class="operations-card"><h3>${escapeHtml(page.name)}</h3><p>Connection: ${escapeHtml(page.connection)} · Posting: ${escapeHtml(page.postingStatus)}</p></article>`).join('')}</div></section>`;
     document.getElementById('operationsContent').innerHTML = totals + replies + clients + `<details class="operations-details"><summary>Sender and Page operations</summary>${actions}${senders}${pages}</details>`;
     document.getElementById('clientFilter').value = clientFilter;
+    document.getElementById('senderFilter').value = accountNames.includes(senderFilter) ? senderFilter : 'all';
+    if (!accountNames.includes(senderFilter)) senderFilter = 'all';
     document.getElementById('clientSearch').addEventListener('input', event => { clientQuery = event.target.value; renderClients(); });
     document.getElementById('clientFilter').addEventListener('change', event => { clientFilter = event.target.value; renderClients(); });
+    document.getElementById('senderFilter').addEventListener('change', event => { senderFilter = event.target.value; visibleCount = 100; renderClients(); });
+    document.getElementById('showMoreClients').addEventListener('click', () => { visibleCount += 100; renderClients(); });
     renderClients();
   }
 
+  async function showStoredArchiveFallback(error) {
+    const content = document.getElementById('operationsContent');
+    const client = window.reachrSupabaseClient;
+    if (!client) throw error;
+    const { data, error: archiveError } = await client.from('reachr_conversations')
+      .select('business_name,recipient_name,sender_actor_name,messenger_url,updated_at')
+      .eq('marketplace_excluded', false).order('updated_at', { ascending: false }).limit(1000);
+    if (archiveError) throw archiveError;
+    const rows = data || [];
+    document.getElementById('operationsStatus').textContent = 'Live sender connection unavailable · showing stored outreach archive';
+    content.innerHTML = `<div class="operations-offline"><strong>Live sender accounts are offline.</strong><p>The archived list below may be incomplete. Reply sending and follow-up changes require the live connection. You can still open an exact Messenger thread or use the stored inbox.</p><button type="button" id="openStoredInbox">Open stored inbox</button></div><section class="operations-section"><h3>Stored conversations</h3><p class="caption">${number(rows.length)} archived records shown · sender names appear when recorded</p><input id="archiveSearch" type="search" aria-label="Search stored conversations" placeholder="Search business, contact, or sender"><div id="archiveRows"></div></section>`;
+    const renderRows = () => {
+      const query = document.getElementById('archiveSearch').value.trim().toLowerCase();
+      const matching = rows.filter(row => !query || [row.business_name, row.recipient_name, row.sender_actor_name].join(' ').toLowerCase().includes(query));
+      document.getElementById('archiveRows').innerHTML = matching.map(row => {
+        const url = safeMessenger(row.messenger_url);
+        return `<div class="operations-row"><strong>${escapeHtml(row.business_name)}</strong><small>${escapeHtml(row.recipient_name || 'Recipient unconfirmed')} · ${escapeHtml(row.sender_actor_name || 'Sender not recorded')} · Last stored activity ${escapeHtml(date(row.updated_at))}</small>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open Messenger ↗</a>` : ''}</div>`;
+      }).join('') || '<p class="caption">No stored conversations match this search.</p>';
+    };
+    document.getElementById('archiveSearch').addEventListener('input', renderRows);
+    document.getElementById('openStoredInbox').addEventListener('click', () => document.getElementById('inboxTab').click());
+    renderRows();
+  }
+
   async function load(force = false) {
-    if (panel.hidden || document.querySelector('main').hidden || !force && (Date.now() - lastLoaded < 60000 || document.activeElement?.matches('#clientSearch,#clientFilter,#clientStatus,#clientNote,#clientReplyText'))) return;
+    if (panel.hidden || document.querySelector('main').hidden || !force && (Date.now() - lastLoaded < 60000 || document.activeElement?.matches('#clientSearch,#clientFilter,#senderFilter,#archiveSearch,#clientStatus,#clientNote,#clientReplyText'))) return;
     document.getElementById('operationsStatus').textContent = 'Checking live outreach records…';
     try {
       render(await apiRequest('/github-operations'));
@@ -178,7 +212,9 @@
     } catch (error) {
       currentData = null;
       document.getElementById('operationsContent').textContent = '';
-      document.getElementById('operationsStatus').textContent = `${error.message} No live communication data is shown.`;
+      document.getElementById('operationsStatus').textContent = `${error.message} Checking stored archive…`;
+      try { await showStoredArchiveFallback(error); }
+      catch (archiveError) { document.getElementById('operationsStatus').textContent = `${error.message} Stored archive unavailable: ${archiveError.message}`; }
       const detail = document.getElementById('clientDetail');
       if (!detail.hidden) {
         document.getElementById('clientSend')?.setAttribute('disabled', '');
@@ -213,5 +249,5 @@
   window.addEventListener('focus', () => load());
   window.addEventListener('reachr-auth-open', () => load());
   setInterval(load, 60000);
-  if (window.wildroseInitialSection === '#operations') tab.click();
+  if (!window.wildroseInitialSection || window.wildroseInitialSection === '#operations') tab.click();
 })();
