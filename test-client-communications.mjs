@@ -4,6 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const source = fs.readFileSync(new URL('./operations.js', import.meta.url), 'utf8');
+const triageSource = fs.readFileSync(new URL('./reply-triage.js', import.meta.url), 'utf8');
 
 test('client communications prioritizes verified replies and requires confirmation to send', async () => {
   const elements = new Map();
@@ -47,6 +48,7 @@ test('client communications prioritizes verified replies and requires confirmati
     URL,
     Date,
   });
+  vm.runInContext(triageSource, context);
   const instrumented = source.replace(/\}\)\(\);\s*$/, 'globalThis.renderForTest = render;globalThis.renderDetailForTest = renderDetail;globalThis.showStoredArchiveFallbackForTest = showStoredArchiveFallback;})();');
   assert.notEqual(instrumented, source);
   vm.runInContext(instrumented, context);
@@ -113,13 +115,17 @@ test('client communications prioritizes verified replies and requires confirmati
   assert.doesNotMatch(element('clientDetail').innerHTML, /id="clientSend"/);
 
   context.window.reachrSupabaseClient.from = table => {
-    assert.equal(table, 'reachr_conversations');
-    return { select() { return this; }, eq() { return this; }, order() { return this; }, async limit() { return { data: [{ business_name: 'Archived Co', recipient_name: 'Pat', sender_actor_name: 'Jack', messenger_url: 'https://www.messenger.com/t/123', updated_at: '2026-10-06T11:00:00Z' }], error: null }; } };
+    return { select() { return this; }, eq() { return this; }, order() { return this; },
+      async limit() { assert.equal(table, 'reachr_conversations'); return { data: [{ id: 'archived', business_name: 'Archived Co', recipient_name: 'Pat', sender_actor_name: 'Jack', messenger_url: 'https://www.messenger.com/t/123', updated_at: '2026-10-06T11:00:00Z' }], error: null }; },
+      async range() { assert.equal(table, 'reachr_messages'); return { data: [{ conversation_id: 'archived', direction: 'inbound', body: 'Hello', observed_at: '2026-10-06T11:00:00Z', created_at: '2026-10-06T11:01:00Z' }], error: null }; },
+    };
   };
   await context.showStoredArchiveFallbackForTest(new Error('offline'));
   assert.match(element('operationsContent').innerHTML, /Live sender accounts are offline/);
   assert.match(element('archiveRows').innerHTML, /Archived Co/);
   assert.match(element('archiveRows').innerHTML, /Archive updated/);
+  assert.match(element('archiveRows').innerHTML, /Potential reply/);
+  assert.match(element('archivePriority').textContent, /1 archived chat/);
   assert.equal(element('showMoreArchive').hidden, true);
   assert.doesNotMatch(element('operationsContent').innerHTML, /Review and send/);
 });

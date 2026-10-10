@@ -8,7 +8,8 @@ test('Messenger inbox exposes a queue and a private Script Library',()=>{
  assert.match(source,/full exchange stored in Supabase/);
  assert.match(source,/\.tabs\.hidden\{display:none\}/);
  assert.match(source,/nothing sends to Messenger yet/i);
- assert.match(source,/\.eq\('direction','inbound'\)/);
+ assert.match(source,/Potential replies to check/);
+ assert.match(source,/needsReply\.has\(c\.id\)/);
  assert.match(source,/\.eq\('marketplace_excluded',false\)\.order\('updated_at'/);
  assert.doesNotMatch(source,/\.in\('id',\[\.\.\.replyCounts\.keys\(\)\]\)/);
  assert.match(source,/sender_actor_name/);
