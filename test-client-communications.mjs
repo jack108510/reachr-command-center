@@ -119,5 +119,7 @@ test('client communications prioritizes verified replies and requires confirmati
   await context.showStoredArchiveFallbackForTest(new Error('offline'));
   assert.match(element('operationsContent').innerHTML, /Live sender accounts are offline/);
   assert.match(element('archiveRows').innerHTML, /Archived Co/);
+  assert.match(element('archiveRows').innerHTML, /Archive updated/);
+  assert.equal(element('showMoreArchive').hidden, true);
   assert.doesNotMatch(element('operationsContent').innerHTML, /Review and send/);
 });
