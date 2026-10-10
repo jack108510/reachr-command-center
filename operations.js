@@ -189,16 +189,20 @@
     if (archiveError) throw archiveError;
     const rows = data || [];
     document.getElementById('operationsStatus').textContent = 'Live sender connection unavailable · showing stored outreach archive';
-    content.innerHTML = `<div class="operations-offline"><strong>Live sender accounts are offline.</strong><p>The archived list below may be incomplete. Reply sending and follow-up changes require the live connection. You can still open an exact Messenger thread or use the stored inbox.</p><button type="button" id="openStoredInbox">Open stored inbox</button></div><section class="operations-section"><h3>Stored conversations</h3><p class="caption">${number(rows.length)} archived records shown · sender names appear when recorded</p><input id="archiveSearch" type="search" aria-label="Search stored conversations" placeholder="Search business, contact, or sender"><div id="archiveRows"></div></section>`;
+    content.innerHTML = `<div class="operations-offline"><strong>Live sender accounts are offline.</strong><p>The archived list below may be incomplete. Reply sending and follow-up changes require the live connection. You can still open an exact Messenger thread or use the stored inbox.</p><button type="button" id="openStoredInbox">Open stored inbox</button></div><section class="operations-section"><h3>Stored conversations</h3><p id="archiveCount" class="caption"></p><input id="archiveSearch" type="search" aria-label="Search stored conversations" placeholder="Search business, contact, or sender"><div id="archiveRows"></div><button id="showMoreArchive" type="button" class="reachr-tab" hidden>Show more archived chats</button></section>`;
+    let archiveVisibleCount = 100;
     const renderRows = () => {
       const query = document.getElementById('archiveSearch').value.trim().toLowerCase();
       const matching = rows.filter(row => !query || [row.business_name, row.recipient_name, row.sender_actor_name].join(' ').toLowerCase().includes(query));
-      document.getElementById('archiveRows').innerHTML = matching.map(row => {
+      document.getElementById('archiveCount').textContent = `${number(matching.length)} archived records match · ${number(Math.min(matching.length, archiveVisibleCount))} shown · sender names appear when recorded`;
+      document.getElementById('archiveRows').innerHTML = matching.slice(0, archiveVisibleCount).map(row => {
         const url = safeMessenger(row.messenger_url);
-        return `<div class="operations-row"><strong>${escapeHtml(row.business_name)}</strong><small>${escapeHtml(row.recipient_name || 'Recipient unconfirmed')} · ${escapeHtml(row.sender_actor_name || 'Sender not recorded')} · Last stored activity ${escapeHtml(date(row.updated_at))}</small>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open Messenger ↗</a>` : ''}</div>`;
+        return `<div class="operations-row"><strong>${escapeHtml(row.business_name)}</strong><small>${escapeHtml(row.recipient_name || 'Recipient unconfirmed')} · ${escapeHtml(row.sender_actor_name || 'Sender not recorded')} · Archive updated ${escapeHtml(date(row.updated_at))}</small>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open Messenger ↗</a>` : ''}</div>`;
       }).join('') || '<p class="caption">No stored conversations match this search.</p>';
+      document.getElementById('showMoreArchive').hidden = matching.length <= archiveVisibleCount;
     };
-    document.getElementById('archiveSearch').addEventListener('input', renderRows);
+    document.getElementById('archiveSearch').addEventListener('input', () => { archiveVisibleCount = 100; renderRows(); });
+    document.getElementById('showMoreArchive').addEventListener('click', () => { archiveVisibleCount += 100; renderRows(); });
     document.getElementById('openStoredInbox').addEventListener('click', () => document.getElementById('inboxTab').click());
     renderRows();
   }
