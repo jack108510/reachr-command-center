@@ -70,6 +70,34 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .dashboard-page .operations-archive-tools input{flex:1;min-width:220px}
 .dashboard-page .operations-archive-tools select{padding:10px 12px;border:1px solid #d7c6b6;border-radius:9px;background:#fffaf5;color:#27342c;font:700 12px Manrope,sans-serif}
 .dashboard-page .operations-reply-flag{display:inline-block;margin-left:8px;color:#9b481c;font-size:11px;font-weight:800}
+#publisherPanel[hidden],.publisher-confirm[hidden]{display:none}
+.publisher-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin:8px 0 28px;padding-bottom:26px;border-bottom:1px solid #e7ddd2}
+.publisher-head h2{margin:8px 0 7px;font:400 clamp(32px,4vw,50px) Georgia,serif;letter-spacing:-.05em;color:#252e27}
+.publisher-head p{margin:0;color:#746f66;font-size:13px}
+.publisher-kicker,.publisher-preview-label{color:#ae5c39;font:700 11px 'DM Mono',monospace;letter-spacing:.13em;white-space:nowrap}
+.publisher-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(300px,.95fr);gap:24px;align-items:start}
+.publisher-compose,.publisher-post{background:#fff;border:1px solid #e4d9ce;border-radius:16px;box-shadow:0 12px 32px #2d281609}
+.publisher-compose{padding:25px}
+.publisher-compose label[for=publisherCopy]{display:block;margin-bottom:10px;font-weight:800;font-size:13px;color:#303a31}
+#publisherCopy{display:block;width:100%;min-height:230px;resize:vertical;border:1px solid #d9d2c8;border-radius:12px;background:#fffdf9;color:#27342c;padding:17px;font:14px/1.55 Manrope,sans-serif;outline:none}
+#publisherCopy:focus{border-color:#d27750;box-shadow:0 0 0 3px #d2775020}
+.publisher-media-head{display:flex;justify-content:space-between;align-items:center;margin:25px 0 10px;font-size:13px;color:#303a31}
+.publisher-media-head span{font:11px 'DM Mono',monospace;color:#887d73}
+.publisher-drop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px dashed #d7c4b3;border-radius:12px;background:#fffaf4;padding:18px;cursor:pointer;color:#344036}
+.publisher-drop strong{font-size:12px}.publisher-drop small{display:block;flex-basis:100%;padding-left:33px;color:#887d73;font-size:11px}
+.publisher-drop-icon{display:grid;place-items:center;width:23px;height:23px;border-radius:7px;background:#d16f47;color:#fff;font-size:19px}
+.publisher-thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:13px}
+.publisher-thumb{position:relative;aspect-ratio:1;overflow:hidden;border-radius:9px;background:#f1ebe4}.publisher-thumb img{width:100%;height:100%;object-fit:cover}.publisher-thumb button{position:absolute;top:4px;right:4px;display:grid;place-items:center;width:24px;height:24px;border:0;border-radius:50%;background:#26332de0;color:#fff;font-size:19px;cursor:pointer}
+.publisher-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:28px}.publisher-actions strong,.publisher-actions small{display:block}.publisher-actions strong{font-size:12px}.publisher-actions small{margin-top:3px;color:#8a8075;font-size:11px}
+.publisher-actions button,.publisher-confirm-actions button:last-child{border:0;border-radius:9px;background:#ce6841;color:white;padding:12px 16px;font:800 12px Manrope,sans-serif;cursor:pointer;white-space:nowrap}.publisher-actions button:disabled{opacity:.5;cursor:not-allowed}
+.publisher-status{min-height:34px;margin:20px 0 8px;color:#6b645d;font-size:12px;line-height:1.5}.publisher-status[data-tone=error]{color:#a6422e}.publisher-status[data-tone=ready]{color:#276344}.publisher-status a,.publisher-standalone{color:#9e4d2e;font-size:12px;font-weight:800}
+.publisher-preview{position:sticky;top:18px}.publisher-preview-label{margin:4px 0 11px}.publisher-post{padding:20px}.publisher-post-head{display:flex;gap:11px;align-items:center}.publisher-avatar{display:grid;place-items:center;width:39px;height:39px;border-radius:50%;background:#ce6841;color:white;font:22px Georgia,serif}.publisher-post-head strong,.publisher-post-head small{display:block}.publisher-post-head strong{font-size:12px}.publisher-post-head small{margin-top:3px;color:#8b857c;font-size:10px}
+#publisherPreviewCopy{min-height:55px;margin:18px 0;color:#303630;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.publisher-placeholder{color:#a19a91!important}
+.publisher-preview-images{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;overflow:hidden;border-radius:8px}.publisher-preview-images.single{grid-template-columns:1fr}.publisher-preview-images img{display:block;width:100%;height:170px;object-fit:cover}.publisher-preview-images.single img{height:auto;max-height:390px;object-fit:contain;background:#f7f4f0}
+.publisher-social{display:flex;justify-content:space-around;gap:8px;margin-top:16px;padding-top:13px;border-top:1px solid #eee7df;color:#a09a91;font-size:11px}.publisher-footnote{margin-top:13px;color:#8d8277;font-size:11px;line-height:1.5}
+.publisher-confirm{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:#172018a8;padding:18px}.publisher-confirm-card{width:min(100%,470px);border-radius:16px;background:#fffaf5;padding:30px;box-shadow:0 22px 80px #0004}.publisher-confirm-card h3{margin:10px 0;font:400 32px Georgia,serif;color:#27342c}.publisher-confirm-card p{font-size:13px;line-height:1.5;color:#665f56}.publisher-confirm-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:24px}.publisher-confirm-actions button:first-child{border:1px solid #d5c9bd;border-radius:9px;background:#fff;color:#344036;padding:11px 15px;font-weight:800;cursor:pointer}
+@media(max-width:800px){.publisher-grid{grid-template-columns:1fr}.publisher-preview{position:static}.publisher-head{align-items:flex-start}.publisher-kicker{display:none}}
+@media(max-width:500px){.publisher-compose{padding:18px}.publisher-head h2{font-size:34px}.publisher-actions{align-items:flex-start;flex-direction:column}}
 .dashboard-page #archiveSearch{width:min(100%,450px);padding:11px 12px;margin:8px 0 12px;border:1px solid var(--stroke);border-radius:9px;background:#fff;color:var(--ink)}
 .dashboard-page #showMoreClients,.dashboard-page #showMoreArchive{margin-top:15px;border-color:var(--stroke);background:#fffdfa;color:var(--ink)}
 
