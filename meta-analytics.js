@@ -1,5 +1,5 @@
 (() => {
-  const origin = 'https://n8n.wildeautomations.com/reachr-command-center/api/meta-analytics';
+  const origin = 'https://wildrose-widget.wildeautomations.com/api/command-center/insights';
   const nav = document.querySelector('.reachr-nav');
   const overview = document.getElementById('overviewPanel');
   const inbox = document.getElementById('inboxPanel');
@@ -22,7 +22,7 @@
   document.head.append(style);
 
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
-  const count = value => Number(value || 0).toLocaleString('en-CA');
+  const count = value => value == null ? '—' : Number(value).toLocaleString('en-CA');
   const money = (value, currency) => `${escapeHtml(currency)} ${Number(value || 0).toFixed(2)}`;
   const postUrl = value => {
     try {
@@ -35,19 +35,15 @@
   let lastLoaded = 0;
 
   function render(data) {
-    document.getElementById('metaStatus').textContent = `Checked ${new Date(data.checkedAt).toLocaleString()} · Read only · Page ${data.page.id || 'unavailable'}`;
-    const ads = data.ads.status === 'ready' ? `<article class="meta-card"><h3>Ads · ${escapeHtml(data.ads.accountName)}</h3><div class="caption">${escapeHtml(data.ads.period.start || '')} to ${escapeHtml(data.ads.period.end || '')} · ${escapeHtml(data.ads.currency)}</div><div class="meta-stats"><div class="meta-stat">Spend<strong>${money(data.ads.totals.spend, data.ads.currency)}</strong></div><div class="meta-stat">Impressions<strong>${count(data.ads.totals.impressions)}</strong></div><div class="meta-stat">Reach<strong>${count(data.ads.totals.reach)}</strong></div><div class="meta-stat">Clicks<strong>${count(data.ads.totals.clicks)}</strong></div><div class="meta-stat">Link clicks<strong>${count(data.ads.totals.linkClicks)}</strong></div></div><div class="label">Campaigns with delivery</div>${data.ads.campaigns.map(campaign => `<div class="meta-row">${escapeHtml(campaign.name)}<small>${money(campaign.spend, data.ads.currency)} · ${count(campaign.impressions)} impressions · ${count(campaign.linkClicks)} link clicks</small></div>`).join('') || '<p class="caption">No ad delivery in this period.</p>'}</article>` : `<article class="meta-card"><h3>Ads</h3><p class="meta-warning">${escapeHtml(data.ads.reason)}</p></article>`;
-    const page = data.page.status === 'ready' ? (() => {
-      const posts = data.page.posts.status === 'ready' ? data.page.posts.items : null;
-      const recentShares = posts?.reduce((total, post) => total + Number(post.shares || 0), 0);
-      const stats = `<div class="meta-stats"><div class="meta-stat">Followers<strong>${count(data.page.followers)}</strong></div><div class="meta-stat">Page likes<strong>${count(data.page.likes)}</strong></div><div class="meta-stat">Recent posts<strong>${posts ? count(posts.length) : '—'}</strong></div><div class="meta-stat">Shares on recent posts<strong>${posts ? count(recentShares) : '—'}</strong></div></div>`;
-      const recentPosts = posts ? posts.map(post => {
-        const url = postUrl(post.url);
-        return `<div class="meta-row">${escapeHtml(post.text || 'Page post')}<small>${escapeHtml(post.createdAt?.slice(0, 10) || '')} · ${count(post.shares)} shares</small>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">View post ↗</a>` : ''}</div>`;
-      }).join('') || '<p class="caption">No recent posts returned.</p>' : `<p class="meta-warning">${escapeHtml(data.page.posts.reason)}</p>`;
-      return `<article class="meta-card"><h3>${escapeHtml(data.page.name)} · Organic Page</h3>${stats}<h3>Recent posts</h3>${recentPosts}<p class="caption">Recent-post counts cover only the posts returned by Meta. Reaction, comment, and post-view metrics are unavailable to this token.</p></article>`;
-    })() : `<article class="meta-card"><h3>Organic Page</h3><p class="meta-warning">${escapeHtml(data.page.reason)}</p></article>`;
-    document.getElementById('metaContent').innerHTML = `${page}<details class="meta-ads"><summary>Paid ads · secondary report</summary>${ads}</details>`;
+    document.getElementById('metaStatus').textContent = `Updated from Meta ${new Date(data.checkedAt).toLocaleString()}`;
+    const page = data.page;
+    const posts = page.posts.status === 'ready' ? page.posts.items : null;
+    const stats = `<div class="meta-stats"><div class="meta-stat">Followers<strong>${count(page.followers)}</strong></div><div class="meta-stat">Page likes<strong>${count(page.likes)}</strong></div><div class="meta-stat">Recent posts<strong>${posts ? count(posts.length) : '—'}</strong></div><div class="meta-stat">Shares on recent posts<strong>${posts ? count(posts.reduce((sum, post) => sum + Number(post.shares || 0), 0)) : '—'}</strong></div></div>`;
+    const rows = posts ? posts.map(post => {
+      const url = postUrl(post.url);
+      return `<div class="meta-row">${escapeHtml(post.text || 'Page post')}<small>${escapeHtml(post.createdAt?.slice(0, 10) || '')} · ${count(post.shares)} shares</small>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">View post ↗</a>` : ''}</div>`;
+    }).join('') || '<p class="caption">No recent posts returned by Meta.</p>' : `<p class="meta-warning">${escapeHtml(page.posts.reason)}</p>`;
+    document.getElementById('metaContent').innerHTML = `<article class="meta-card"><h3>${escapeHtml(page.name)} · Facebook Page</h3>${stats}<h3>Recent posts</h3>${rows}<p class="caption">Counts come directly from Meta when this tab loads. Shares cover the recent posts shown above.</p></article>`;
   }
 
   async function load() {
@@ -58,11 +54,12 @@
       const { data: { session }, error } = await window.reachrSupabaseClient.auth.getSession();
       if (error || !session?.access_token) throw Error('Sign in again to load Meta analytics.');
       const response = await fetch(origin, { headers: { Authorization: `Bearer ${session.access_token}` }, cache: 'no-store' });
-      if (!response.ok) throw Error(response.status === 401 ? 'Sign in again to load Meta analytics.' : 'Meta report unavailable.');
+      if (!response.ok) throw Error(response.status === 401 ? 'Sign in again to load Page insights.' : 'Connect or refresh your Facebook Page token in Publish to Page to see current numbers.');
       render(await response.json());
       lastLoaded = Date.now();
     } catch (error) {
       status.textContent = error.message;
+      document.getElementById('metaContent').textContent = '';
     }
   }
 

@@ -157,6 +157,7 @@
   }
 
   function render(data) {
+    tab.textContent = 'Messenger hub';
     document.getElementById('operationsStatus').textContent = `Checked ${date(data.checkedAt)} · Halifax schedule · Replies send only after your confirmation`;
     currentData = data;
     const conversations = new Map((data.conversations || []).map(item => [item.id, item]));
@@ -194,6 +195,7 @@
       const latest = window.reachrReplyTriage.latestMessages(await window.reachrReplyTriage.loadMessages(client));
       needsReply = new Set([...latest].filter(([, message]) => message.direction === 'inbound').map(([id]) => id));
     } catch (_) { triageAvailable = false; }
+    tab.textContent = 'Messenger archive';
     document.getElementById('operationsStatus').textContent = 'Live sender connection unavailable · showing stored outreach archive';
     content.innerHTML = `<div class="operations-offline"><strong>Live sender accounts are offline.</strong><p>The archive can flag potential unanswered replies, but it cannot guarantee that new messages are captured. Verify each flagged thread in Messenger. Reply sending and follow-up changes require the live connection.</p><button type="button" id="openStoredInbox">Open stored inbox</button></div><section class="operations-section"><h3>Stored conversations</h3><p id="archivePriority" class="operations-priority"></p><p id="archiveCount" class="caption"></p><div class="operations-archive-tools"><input id="archiveSearch" type="search" aria-label="Search stored conversations" placeholder="Search business, contact, or sender"><select id="archiveFilter" aria-label="Filter stored conversations"><option value="needs">Potential replies to check</option><option value="all">All stored chats</option></select></div><div id="archiveRows"></div><button id="showMoreArchive" type="button" class="reachr-tab" hidden>Show more archived chats</button></section>`;
     if (!triageAvailable || !rows.some(row => needsReply.has(row.id))) document.getElementById('archiveFilter').value = 'all';
