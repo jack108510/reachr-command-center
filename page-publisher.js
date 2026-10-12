@@ -12,7 +12,7 @@
   const panel = document.createElement('section');
   panel.id = 'publisherPanel';
   panel.hidden = true;
-  panel.innerHTML = `<div class="publisher-head"><div><div class="label">Wildrose Automations · Facebook Page</div><h2>Make your next post count.</h2><p>Write the copy, add up to four photos, and choose when it goes live.</p></div><span class="publisher-kicker">PAGE PUBLISHER</span></div>
+  panel.innerHTML = `<div class="publisher-head"><div><div class="label">Wildrose Automations · Facebook Page</div><h2>Make your next post count.</h2><p>Write the copy, add up to four photos, and choose when it goes live.</p></div><div class="publisher-head-actions"><button id="publisherChangeConnection" type="button" hidden>Change Page connection</button><span class="publisher-kicker">PAGE PUBLISHER</span></div></div>
     <section class="publisher-connect" id="publisherConnect" hidden><div><div class="label">PAGE CONNECTION</div><h3>Connect your Facebook Page</h3><p>Use a Page access token with permission to create posts. The token is saved on the private Wildrose server.</p></div><form id="publisherConnectForm"><label for="publisherToken">Page access token</label><div class="publisher-connect-row"><input id="publisherToken" type="password" autocomplete="off" required placeholder="Paste your Page access token"><button type="submit">Connect Page</button></div><small id="publisherConnectStatus" role="status"></small></form></section>
     <div class="publisher-grid"><div class="publisher-compose"><label for="publisherCopy">Post copy</label><textarea id="publisherCopy" maxlength="5000" placeholder="What would you like to share?"></textarea><div class="publisher-media-head"><strong>Photos</strong><span id="publisherImageCount">0 of 4</span></div><label class="publisher-drop" for="publisherFiles"><span class="publisher-drop-icon">＋</span><strong>Choose JPG or PNG images</strong><small>Up to four photos · 8 MB each</small></label><input id="publisherFiles" type="file" accept="image/jpeg,image/png" multiple hidden><div id="publisherThumbs" class="publisher-thumbs"></div><fieldset class="publisher-timing"><legend>When should this go live?</legend><label><input type="radio" name="publisherTiming" value="now" checked> Publish now</label><label><input type="radio" name="publisherTiming" value="schedule"> Schedule with Meta</label><div id="publisherScheduleFields" hidden><label for="publisherWhen">Date and time</label><input id="publisherWhen" type="datetime-local"><small id="publisherTimezone"></small><small>Choose a time 10 minutes to 30 days ahead. Meta holds the schedule once confirmed.</small></div></fieldset><div class="publisher-actions"><div><strong>Wildrose Automations</strong><small id="publisherActionHint">Facebook Page · publishes immediately</small></div><button id="publisherReview" type="button" disabled>Review post</button></div><p id="publisherStatus" class="publisher-status" role="status" aria-live="polite">Checking Page connection…</p></div>
     <aside class="publisher-preview"><div class="publisher-preview-label">LIVE PREVIEW</div><div class="publisher-post"><div class="publisher-post-head"><span class="publisher-avatar">W</span><div><strong>Wildrose Automations</strong><small>Just now · Public</small></div></div><p id="publisherPreviewCopy" class="publisher-placeholder">Your post appears here as you write.</p><div id="publisherPreviewImages" class="publisher-preview-images"></div><div class="publisher-social"><span>Like</span><span>Comment</span><span>Share</span></div></div><p class="publisher-footnote">Photos stay on this device until you confirm publishing. The Page token stays on the private server.</p></aside></div>
@@ -105,12 +105,14 @@
       const config = await response.json();
       connected = Boolean(config.connected && config.pageId);
       $('publisherConnect').hidden = connected;
+      $('publisherChangeConnection').hidden = !connected;
       if (!connected) { setStatus('Connect your Facebook Page to start publishing.', 'error'); $('publisherScheduledStatus').textContent = 'Connect the Page to see upcoming posts.'; updateReview(); return; }
       setStatus(`Connected to ${config.pageName || 'Wildrose Automations'} · ready to publish`, 'ready');
       await loadScheduledPosts();
     } catch (error) { connected = false; $('publisherConnect').hidden = true; setStatus(`${error.message} Your draft stays here while this tab is open.`, 'error'); }
     updateReview();
   }
+  $('publisherChangeConnection').onclick = () => { $('publisherConnect').hidden = false; $('publisherToken').focus(); };
   $('publisherConnectForm').onsubmit = async event => {
     event.preventDefault();
     const button = $('publisherConnectForm').querySelector('button');
