@@ -1,5 +1,5 @@
 (() => {
-  const api = 'https://rose-publisher.wildeautomations.com/api/command-center';
+  const api = 'https://wildrose-widget.wildeautomations.com/api/command-center';
   const nav = document.querySelector('.reachr-nav');
   const tab = document.createElement('button');
   tab.id = 'publisherTab';
@@ -13,8 +13,9 @@
   panel.id = 'publisherPanel';
   panel.hidden = true;
   panel.innerHTML = `<div class="publisher-head"><div><div class="label">Wildrose Automations · Facebook Page</div><h2>Make your next post count.</h2><p>Write the copy, add up to four photos, and choose when it goes live.</p></div><span class="publisher-kicker">PAGE PUBLISHER</span></div>
-    <div class="publisher-grid"><div class="publisher-compose"><label for="publisherCopy">Post copy</label><textarea id="publisherCopy" maxlength="5000" placeholder="What would you like to share?"></textarea><div class="publisher-media-head"><strong>Photos</strong><span id="publisherImageCount">0 of 4</span></div><label class="publisher-drop" for="publisherFiles"><span class="publisher-drop-icon">＋</span><strong>Choose JPG or PNG images</strong><small>Up to four photos · 8 MB each</small></label><input id="publisherFiles" type="file" accept="image/jpeg,image/png" multiple hidden><div id="publisherThumbs" class="publisher-thumbs"></div><fieldset class="publisher-timing"><legend>When should this go live?</legend><label><input type="radio" name="publisherTiming" value="now" checked> Publish now</label><label><input type="radio" name="publisherTiming" value="schedule"> Schedule with Meta</label><div id="publisherScheduleFields" hidden><label for="publisherWhen">Date and time</label><input id="publisherWhen" type="datetime-local"><small id="publisherTimezone"></small><small>Choose a time 10 minutes to 30 days ahead. Meta holds the schedule once confirmed.</small></div></fieldset><div class="publisher-actions"><div><strong>Wildrose Automations</strong><small id="publisherActionHint">Facebook Page · publishes immediately</small></div><button id="publisherReview" type="button" disabled>Review post</button></div><p id="publisherStatus" class="publisher-status" role="status" aria-live="polite">Checking Page connection…</p><a class="publisher-standalone" href="https://rose-publisher.wildeautomations.com/" target="_blank" rel="noopener noreferrer">Open standalone publisher ↗</a></div>
-    <aside class="publisher-preview"><div class="publisher-preview-label">LIVE PREVIEW</div><div class="publisher-post"><div class="publisher-post-head"><span class="publisher-avatar">W</span><div><strong>Wildrose Automations</strong><small>Just now · Public</small></div></div><p id="publisherPreviewCopy" class="publisher-placeholder">Your post appears here as you write.</p><div id="publisherPreviewImages" class="publisher-preview-images"></div><div class="publisher-social"><span>Like</span><span>Comment</span><span>Share</span></div></div><p class="publisher-footnote">Photos stay on this device until you confirm publishing. The Page token stays on the publisher server.</p></aside></div>
+    <section class="publisher-connect" id="publisherConnect" hidden><div><div class="label">PAGE CONNECTION</div><h3>Connect your Facebook Page</h3><p>Use a Page access token with permission to create posts. The token is saved on the private Wildrose server.</p></div><form id="publisherConnectForm"><label for="publisherToken">Page access token</label><div class="publisher-connect-row"><input id="publisherToken" type="password" autocomplete="off" required placeholder="Paste your Page access token"><button type="submit">Connect Page</button></div><small id="publisherConnectStatus" role="status"></small></form></section>
+    <div class="publisher-grid"><div class="publisher-compose"><label for="publisherCopy">Post copy</label><textarea id="publisherCopy" maxlength="5000" placeholder="What would you like to share?"></textarea><div class="publisher-media-head"><strong>Photos</strong><span id="publisherImageCount">0 of 4</span></div><label class="publisher-drop" for="publisherFiles"><span class="publisher-drop-icon">＋</span><strong>Choose JPG or PNG images</strong><small>Up to four photos · 8 MB each</small></label><input id="publisherFiles" type="file" accept="image/jpeg,image/png" multiple hidden><div id="publisherThumbs" class="publisher-thumbs"></div><fieldset class="publisher-timing"><legend>When should this go live?</legend><label><input type="radio" name="publisherTiming" value="now" checked> Publish now</label><label><input type="radio" name="publisherTiming" value="schedule"> Schedule with Meta</label><div id="publisherScheduleFields" hidden><label for="publisherWhen">Date and time</label><input id="publisherWhen" type="datetime-local"><small id="publisherTimezone"></small><small>Choose a time 10 minutes to 30 days ahead. Meta holds the schedule once confirmed.</small></div></fieldset><div class="publisher-actions"><div><strong>Wildrose Automations</strong><small id="publisherActionHint">Facebook Page · publishes immediately</small></div><button id="publisherReview" type="button" disabled>Review post</button></div><p id="publisherStatus" class="publisher-status" role="status" aria-live="polite">Checking Page connection…</p></div>
+    <aside class="publisher-preview"><div class="publisher-preview-label">LIVE PREVIEW</div><div class="publisher-post"><div class="publisher-post-head"><span class="publisher-avatar">W</span><div><strong>Wildrose Automations</strong><small>Just now · Public</small></div></div><p id="publisherPreviewCopy" class="publisher-placeholder">Your post appears here as you write.</p><div id="publisherPreviewImages" class="publisher-preview-images"></div><div class="publisher-social"><span>Like</span><span>Comment</span><span>Share</span></div></div><p class="publisher-footnote">Photos stay on this device until you confirm publishing. The Page token stays on the private server.</p></aside></div>
     <section class="publisher-scheduled"><div class="publisher-scheduled-head"><div><div class="label">COMING UP</div><h3>Scheduled on Meta</h3></div><button id="publisherRefreshScheduled" type="button">Refresh</button></div><p id="publisherScheduledStatus">Connect the Page to see upcoming posts.</p><div id="publisherScheduledList"></div></section>
     <div id="publisherConfirm" class="publisher-confirm" hidden><div class="publisher-confirm-card" role="dialog" aria-modal="true" aria-labelledby="publisherConfirmTitle"><div class="label">FINAL CHECK</div><h3 id="publisherConfirmTitle">Publish to Facebook?</h3><p id="publisherConfirmSummary"></p><p id="publisherConfirmNote">This sends the exact copy and selected photos to the Wildrose Automations Facebook Page now.</p><div class="publisher-confirm-actions"><button id="publisherCancel" type="button">Keep editing</button><button id="publisherSend" type="button">Publish now</button></div></div></div>`;
   document.querySelector('main').append(panel);
@@ -102,13 +103,29 @@
       const response = await fetch(`${api}/config`, { headers: { Authorization: `Bearer ${await sessionToken()}` }, cache: 'no-store' });
       if (!response.ok) throw Error(response.status === 401 ? 'Sign in to the Command Center again.' : 'Publisher connection unavailable.');
       const config = await response.json();
-      if (!config.pageId) throw Error('Facebook Page is not configured.');
-      connected = true;
+      connected = Boolean(config.connected && config.pageId);
+      $('publisherConnect').hidden = connected;
+      if (!connected) { setStatus('Connect your Facebook Page to start publishing.', 'error'); $('publisherScheduledStatus').textContent = 'Connect the Page to see upcoming posts.'; updateReview(); return; }
       setStatus(`Connected to ${config.pageName || 'Wildrose Automations'} · ready to publish`, 'ready');
       await loadScheduledPosts();
-    } catch (error) { connected = false; setStatus(`${error.message} Your draft stays here while this tab is open.`, 'error'); }
+    } catch (error) { connected = false; $('publisherConnect').hidden = true; setStatus(`${error.message} Your draft stays here while this tab is open.`, 'error'); }
     updateReview();
   }
+  $('publisherConnectForm').onsubmit = async event => {
+    event.preventDefault();
+    const button = $('publisherConnectForm').querySelector('button');
+    button.disabled = true;
+    $('publisherConnectStatus').textContent = 'Verifying with Meta…';
+    try {
+      const response = await fetch(`${api}/connect`, { method: 'POST', headers: { Authorization: `Bearer ${await sessionToken()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ token: $('publisherToken').value }), cache: 'no-store' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw Error(result.error || 'Could not connect the Page.');
+      $('publisherToken').value = '';
+      $('publisherConnectStatus').textContent = `Connected to ${result.pageName}.`;
+      await checkConnection(true);
+    } catch (error) { $('publisherConnectStatus').textContent = error.message; }
+    finally { button.disabled = false; }
+  };
   const encode = file => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve({ type: file.type, data: String(reader.result).split(',')[1] });
