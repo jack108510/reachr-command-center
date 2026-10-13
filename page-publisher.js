@@ -14,10 +14,10 @@
   panel.hidden = true;
   panel.innerHTML = `<div class="publisher-head"><div><div class="label">Wildrose Automations · Facebook Page</div><h2>Make your next post count.</h2><p>Write the copy, add up to four photos, and choose when it goes live.</p></div><div class="publisher-head-actions"><button id="publisherChangeConnection" type="button" hidden>Change Page connection</button><span class="publisher-kicker">PAGE PUBLISHER</span></div></div>
     <section class="publisher-connect" id="publisherConnect" hidden><div><div class="label">PAGE CONNECTION</div><h3>Connect your Facebook Page</h3><p>Use a Page access token with permission to create posts. The token is saved on the private Wildrose server.</p></div><form id="publisherConnectForm"><label for="publisherToken">Page access token</label><div class="publisher-connect-row"><input id="publisherToken" type="password" autocomplete="off" required placeholder="Paste your Page access token"><button type="submit">Connect Page</button></div><small id="publisherConnectStatus" role="status"></small></form></section>
-    <div class="publisher-grid"><div class="publisher-compose"><label for="publisherCopy">Post copy</label><textarea id="publisherCopy" maxlength="5000" placeholder="What would you like to share?"></textarea><div class="publisher-media-head"><strong>Photos</strong><span id="publisherImageCount">0 of 4</span></div><label class="publisher-drop" for="publisherFiles"><span class="publisher-drop-icon">＋</span><strong>Choose JPG or PNG images</strong><small>Up to four photos · 8 MB each</small></label><input id="publisherFiles" type="file" accept="image/jpeg,image/png" multiple hidden><div id="publisherThumbs" class="publisher-thumbs"></div><fieldset class="publisher-timing"><legend>When should this go live?</legend><label><input type="radio" name="publisherTiming" value="now" checked> Publish now</label><label><input type="radio" name="publisherTiming" value="schedule"> Schedule with Meta</label><div id="publisherScheduleFields" hidden><label for="publisherWhen">Date and time</label><input id="publisherWhen" type="datetime-local"><small id="publisherTimezone"></small><small>Choose a time 10 minutes to 30 days ahead. Meta holds the schedule once confirmed.</small></div></fieldset><div class="publisher-actions"><div><strong id="publisherPageLabel">Facebook Page</strong><small id="publisherActionHint">Facebook Page · publishes immediately</small></div><button id="publisherReview" type="button" disabled>Review post</button></div><p id="publisherStatus" class="publisher-status" role="status" aria-live="polite">Checking Page connection…</p></div>
-    <aside class="publisher-preview"><div class="publisher-preview-label">LIVE PREVIEW</div><div class="publisher-post"><div class="publisher-post-head"><span class="publisher-avatar">W</span><div><strong id="publisherPreviewPageName">Facebook Page</strong><small>Just now · Public</small></div></div><p id="publisherPreviewCopy" class="publisher-placeholder">Your post appears here as you write.</p><div id="publisherPreviewImages" class="publisher-preview-images"></div><div class="publisher-social"><span>Like</span><span>Comment</span><span>Share</span></div></div><p class="publisher-footnote">Photos stay on this device until you confirm publishing. The Page token stays on the private server.</p></aside></div>
+    <div class="publisher-grid"><div class="publisher-compose"><div class="publisher-copy-heading"><label for="publisherCopy">Post copy</label><span id="publisherCharCount">0 / 5,000 characters</span></div><textarea id="publisherCopy" maxlength="5000" placeholder="What would you like to share?"></textarea><div class="publisher-media-head"><strong>Photos</strong><span id="publisherImageCount">0 of 4</span></div><label class="publisher-drop" for="publisherFiles"><span class="publisher-drop-icon">＋</span><strong>Choose JPG or PNG images</strong><small>Up to four photos · 8 MB each</small></label><input id="publisherFiles" type="file" accept="image/jpeg,image/png" multiple hidden><div id="publisherThumbs" class="publisher-thumbs"></div><fieldset class="publisher-timing"><legend>When should this go live?</legend><label><input type="radio" name="publisherTiming" value="now" checked> Publish now</label><label><input type="radio" name="publisherTiming" value="schedule"> Schedule with Meta</label><div id="publisherScheduleFields" hidden><label for="publisherWhen">Date and time</label><input id="publisherWhen" type="datetime-local"><small id="publisherTimezone"></small><small id="publisherScheduleHelp">Choose a time 10 minutes to 30 days ahead. Meta holds the schedule once confirmed.</small></div></fieldset><div class="publisher-actions"><div><strong id="publisherPageLabel">Facebook Page</strong><small id="publisherActionHint">Facebook Page · publishes immediately</small></div><button id="publisherReview" type="button" disabled>Review post</button></div><p id="publisherStatus" class="publisher-status" role="status" aria-live="polite">Checking Page connection…</p></div>
+    <aside class="publisher-preview"><div class="publisher-preview-label">LIVE PREVIEW</div><div class="publisher-post"><div class="publisher-post-head"><span class="publisher-avatar">W</span><div><strong id="publisherPreviewPageName">Facebook Page</strong><small id="publisherPreviewTime">Just now · Public</small></div></div><p id="publisherPreviewCopy" class="publisher-placeholder">Your post appears here as you write.</p><div id="publisherPreviewImages" class="publisher-preview-images"></div><div class="publisher-social"><span>Like</span><span>Comment</span><span>Share</span></div></div><p class="publisher-footnote">Photos stay on this device until you confirm publishing. The Page token stays on the private server.</p></aside></div>
     <section class="publisher-scheduled"><div class="publisher-scheduled-head"><div><div class="label">COMING UP</div><h3>Scheduled on Meta</h3></div><button id="publisherRefreshScheduled" type="button">Refresh</button></div><p id="publisherScheduledStatus">Connect the Page to see upcoming posts.</p><div id="publisherScheduledList"></div></section>
-    <div id="publisherConfirm" class="publisher-confirm" hidden><div class="publisher-confirm-card" role="dialog" aria-modal="true" aria-labelledby="publisherConfirmTitle"><div class="label">FINAL CHECK</div><h3 id="publisherConfirmTitle">Publish to Facebook?</h3><p id="publisherConfirmSummary"></p><p id="publisherConfirmNote">This sends the exact copy and selected photos to the Wildrose Automations Facebook Page now.</p><div class="publisher-confirm-actions"><button id="publisherCancel" type="button">Keep editing</button><button id="publisherSend" type="button">Publish now</button></div></div></div>`;
+    <div id="publisherConfirm" class="publisher-confirm" hidden><div class="publisher-confirm-card" role="dialog" aria-modal="true" aria-labelledby="publisherConfirmTitle"><div class="label">FINAL CHECK</div><h3 id="publisherConfirmTitle">Publish to Facebook?</h3><p id="publisherConfirmSummary"></p><blockquote id="publisherConfirmCopy" class="publisher-confirm-copy"></blockquote><p id="publisherConfirmNote">This sends the exact copy and selected photos to the Wildrose Automations Facebook Page now.</p><div class="publisher-confirm-actions"><button id="publisherCancel" type="button">Keep editing</button><button id="publisherSend" type="button">Publish now</button></div></div></div>`;
   document.querySelector('main').append(panel);
 
   const $ = id => document.getElementById(id);
@@ -38,6 +38,7 @@
     const copy = $('publisherCopy').value;
     $('publisherPreviewCopy').textContent = copy || 'Your post appears here as you write.';
     $('publisherPreviewCopy').classList.toggle('publisher-placeholder', !copy);
+    $('publisherCharCount').textContent = `${copy.length.toLocaleString()} / 5,000 characters`;
     $('publisherImageCount').textContent = `${files.length} of 4`;
     $('publisherThumbs').replaceChildren();
     $('publisherPreviewImages').replaceChildren();
@@ -57,6 +58,9 @@
     const scheduled = scheduleMode();
     $('publisherScheduleFields').hidden = !scheduled;
     $('publisherActionHint').textContent = scheduled ? 'Facebook Page · Meta holds the scheduled post' : 'Facebook Page · publishes immediately';
+    $('publisherReview').textContent = scheduled ? 'Review scheduled post' : 'Review post';
+    $('publisherPreviewTime').textContent = scheduled && timeValid() ? `${new Date(selectedTime()).toLocaleString()} · Public` : scheduled ? 'Scheduled post · Public' : 'Just now · Public';
+    $('publisherScheduleHelp').textContent = scheduled && $('publisherWhen').value && !timeValid() ? 'Choose a time at least 10 minutes and no more than 30 days from now.' : 'Choose a time 10 minutes to 30 days ahead. Meta holds the schedule once confirmed.';
     $('publisherTimezone').textContent = `Times shown in ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'your local timezone'}.`;
     updateReview();
   }
@@ -149,7 +153,7 @@
   $('publisherFiles').onchange = event => { addFiles(event.target.files); event.target.value = ''; };
   $('publisherCopy').oninput = render;
   panel.querySelectorAll('input[name="publisherTiming"]').forEach(input => input.onchange = renderTiming);
-  $('publisherWhen').oninput = updateReview;
+  $('publisherWhen').oninput = renderTiming;
   $('publisherRefreshScheduled').onclick = loadScheduledPosts;
   renderTiming();
   $('publisherReview').onclick = () => {
@@ -157,12 +161,14 @@
     const scheduled = scheduleMode();
     $('publisherConfirmTitle').textContent = scheduled ? 'Schedule on Facebook?' : 'Publish to Facebook?';
     $('publisherConfirmSummary').textContent = `${$('publisherCopy').value.length} characters${files.length ? ` and ${files.length} photo${files.length === 1 ? '' : 's'}` : ', with no photos'}${scheduled ? ` · ${new Date(selectedTime()).toLocaleString()}` : ''}.`;
+    $('publisherConfirmCopy').textContent = $('publisherCopy').value;
     $('publisherConfirmNote').textContent = scheduled ? 'Meta will hold this post and publish it at the selected time. Check it in the scheduled list afterward.' : `This sends the exact copy and selected photos to ${pageName} now.`;
     $('publisherSend').textContent = scheduled ? 'Schedule post' : 'Publish now';
     $('publisherConfirm').hidden = false;
     $('publisherSend').focus();
   };
   $('publisherCancel').onclick = () => { $('publisherConfirm').hidden = true; $('publisherReview').focus(); };
+  $('publisherConfirm').addEventListener('keydown', event => { if (event.key === 'Escape' && !sending) $('publisherCancel').click(); });
   $('publisherSend').onclick = async () => {
     if (!canReview()) return;
     sending = true; updateReview(); $('publisherSend').disabled = true; $('publisherCancel').disabled = true;
