@@ -25,6 +25,7 @@ test('client communications prioritizes verified replies and requires confirmati
   };
   let confirmed = false;
   let authRejected = false;
+  let copied = '';
   const requests = [];
   const conversation = {
     id: 'a'.repeat(24), businessName: '<Client>', recipientName: 'Sam', accounts: ['Jack'],
@@ -39,6 +40,7 @@ test('client communications prioritizes verified replies and requires confirmati
       addEventListener() {}, wildroseInitialSection: '#overview', confirm: () => confirmed,
       reachrSupabaseClient: { auth: { getSession: async () => ({ data: { session: { access_token: 'test-owner' } } }) } },
     },
+    navigator: { clipboard: { writeText: async text => { copied = text; } } },
     history: { replaceState() {} },
     location: { hash: '' },
     setInterval() {},
@@ -68,7 +70,8 @@ test('client communications prioritizes verified replies and requires confirmati
     senders: [], actions: [], pages: [],
   });
 
-  assert.match(element('operationsContent').innerHTML, /Recorded conversations/);
+  assert.match(element('operationsContent').innerHTML, /Conversation queue/);
+  assert.match(element('operationsContent').innerHTML, /Reply waiting/);
   assert.match(element('operationsContent').innerHTML, /All sender accounts/);
   assert.match(element('operationsContent').innerHTML, /Sender and Page operations/);
   assert.match(element('operationsContent').innerHTML, /Messenger connection health/);
@@ -79,6 +82,11 @@ test('client communications prioritizes verified replies and requires confirmati
   assert.match(element('clientRows').innerHTML, /&lt;Client&gt;/);
   assert.doesNotMatch(element('clientRows').innerHTML, /<Client>/);
   assert.ok(element('clientRows').innerHTML.indexOf('Verified reply waiting') < element('clientRows').innerHTML.indexOf('Review Co'));
+
+  element('operationsContent').listeners.click({ target: { closest: selector => selector === '[data-inbox-filter]' ? { dataset: { inboxFilter: 'replies' } } : null } });
+  assert.match(element('clientRows').innerHTML, /Verified reply waiting/);
+  assert.doesNotMatch(element('clientRows').innerHTML, /Review Co/);
+  element('operationsContent').listeners.click({ target: { closest: selector => selector === '[data-inbox-filter]' ? { dataset: { inboxFilter: 'all' } } : null } });
 
   element('senderFilter').listeners.change({ target: { value: 'Other sender' } });
   assert.match(element('clientRows').innerHTML, /No conversations match/);
@@ -94,6 +102,7 @@ test('client communications prioritizes verified replies and requires confirmati
   context.renderDetailForTest(conversation);
   assert.match(element('clientDetail').innerHTML, /Verified inbound/);
   assert.match(element('clientDetail').innerHTML, /Review and send/);
+  assert.match(element('clientDetail').innerHTML, /Copy for Messenger/);
   element('clientStatus').value = 'waiting';
   element('clientNote').value = 'Follow up on Tuesday';
   await element('saveClient').listeners.click();
@@ -103,6 +112,9 @@ test('client communications prioritizes verified replies and requires confirmati
   requests.length = 0;
   element('clientReplyText').value = 'An exact reply';
   element('clientReplySender').value = 'verified-jack';
+  await element('clientCopy').listeners.click();
+  assert.equal(copied, 'An exact reply');
+  assert.match(element('clientSendState').textContent, /not sent|send there/i);
   await element('clientSend').listeners.click();
   assert.equal(requests.length, 0, 'declining confirmation must not contact the server');
 
@@ -116,6 +128,7 @@ test('client communications prioritizes verified replies and requires confirmati
   assert.equal(element('clientReplyText').value, '');
   context.renderDetailForTest({ ...conversation, replyPending: false, replySenders: [] });
   assert.doesNotMatch(element('clientDetail').innerHTML, /id="clientSend"/);
+  assert.match(element('clientDetail').innerHTML, /Copy for Messenger/);
 
   context.window.reachrSupabaseClient.from = table => {
     return { select() { return this; }, eq() { return this; }, order() { return this; },

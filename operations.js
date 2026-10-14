@@ -5,14 +5,14 @@
   tab.id = 'operationsTab';
   tab.className = 'reachr-tab';
   tab.type = 'button';
-  tab.textContent = 'Messenger hub';
+  tab.textContent = 'Messenger';
   tab.setAttribute('aria-selected', 'false');
   nav.insertBefore(tab, document.getElementById('overviewTab'));
 
   const panel = document.createElement('section');
   panel.id = 'operationsPanel';
   panel.hidden = true;
-  panel.innerHTML = '<div class="chart-card"><div class="chart-header"><div><div class="label">Sender accounts · one workspace</div><h2>Messenger hub</h2><p class="caption">Search recorded chats, review replies, manage follow-ups, and open the exact Messenger thread.</p></div><button class="reachr-tab" id="refreshOperations" type="button">Refresh</button></div><p class="caption" id="operationsStatus">Checking connected sender accounts…</p><section id="clientDetail" class="operations-client-detail" hidden></section><div id="operationsContent"></div></div>';
+  panel.innerHTML = '<div class="chart-card"><div class="chart-header"><div><div class="label">Messenger communication</div><h2>Conversation desk</h2><p class="caption">Start with replies waiting, keep follow-up notes, and open the live thread when you need full context.</p></div><button class="reachr-tab" id="refreshOperations" type="button">Refresh</button></div><p class="caption" id="operationsStatus">Checking connected sender accounts…</p><section id="clientDetail" class="operations-client-detail" hidden></section><div id="operationsContent"></div></div>';
   document.getElementById('metaPanel').after(panel);
 
   const style = document.createElement('style');
@@ -68,8 +68,9 @@
     const messages = (conversation.messages || []).map(message => `<div class="operations-message ${message.direction === 'outbound' ? 'outbound' : ''}"><small>${message.direction === 'outbound' ? 'Recorded outbound' : 'Verified inbound'} · ${escapeHtml(date(message.observedAt))}</small>${escapeHtml(message.body)}</div>`).join('') || '<p class="caption">No recorded messages. Check Messenger for the full thread.</p>';
     const senders = conversation.replyPending ? conversation.replySenders || [] : [];
     const statuses = { needs_review: 'Needs review', awaiting_reply: 'Awaiting reply', interested: 'Interested', waiting: 'Waiting', closed: 'Closed' };
-    const composer = senders.length ? `<div class="operations-section"><h3>Send a reply</h3><p class="caption">Review the live Messenger thread first. Sending is manual and the server rechecks the exact sender, recipient, and verified inbound reply.</p><label for="clientReplySender">Facebook account</label><select id="clientReplySender">${senders.map(sender => `<option value="${escapeHtml(sender.key)}">${escapeHtml(sender.name)}</option>`).join('')}</select><label for="clientReplyText">Exact message</label><textarea id="clientReplyText" maxlength="2000" placeholder="Write your reply"></textarea>${conversation.replyDraft ? '<button id="clientUseDraft" type="button">Use suggested starter</button>' : ''}<button id="clientSend" type="button">Review and send</button><p id="clientSendState" class="caption" role="status">Nothing sends until you confirm.</p></div>` : `<p class="warning">${conversation.replyPending ? 'Sending is unavailable until the owning Facebook account passes its identity and inbox checks.' : 'No verified inbound reply is waiting. Sending from this view is disabled.'}</p>`;
-    detail.innerHTML = `<div class="chart-header"><div><div class="label">Client conversation</div><h3>${escapeHtml(conversation.businessName)}</h3><p class="caption">${escapeHtml(conversation.recipientName || 'Recipient unconfirmed')} · ${escapeHtml((conversation.accounts || []).join(', ') || 'Sender unknown')} · ${number(conversation.verifiedReplyCount)} verified inbound</p></div><div><button id="reloadClient" type="button">Reload thread</button><button id="closeClient" type="button">Close</button></div></div>${messengerUrl ? `<a href="${escapeHtml(messengerUrl)}" target="_blank" rel="noopener noreferrer">Open full Messenger thread ↗</a>` : ''}<p class="warning">Stored history may be incomplete. Check Messenger before sending.</p>${previews}${messages}<div class="operations-section"><h3>Follow-up status</h3><label for="clientStatus">Status</label><select id="clientStatus">${Object.entries(statuses).map(([value, label]) => `<option value="${value}" ${conversation.status === value ? 'selected' : ''}>${label}</option>`).join('')}</select><label for="clientNote">Private note</label><textarea id="clientNote" maxlength="2000" placeholder="Next action and context">${escapeHtml(conversation.note || '')}</textarea><button id="saveClient" type="button">Save status and note</button><p id="clientSaveState" class="caption" role="status">Changes stay private until saved.</p></div>${composer}`;
+    const directSendNote = senders.length ? 'Direct sending is available after you review and confirm the exact message.' : conversation.replyPending ? 'Direct sending is unavailable until the owning Facebook account passes its identity and inbox checks. Copy your reply and send it in Messenger.' : 'No verified inbound reply is waiting. Use Messenger for any new message.';
+    const composer = `<div class="operations-section operations-composer"><h3>Reply workspace</h3><p class="caption">${escapeHtml(directSendNote)}</p>${senders.length ? `<label for="clientReplySender">Facebook account</label><select id="clientReplySender">${senders.map(sender => `<option value="${escapeHtml(sender.key)}">${escapeHtml(sender.name)}</option>`).join('')}</select>` : ''}<label for="clientReplyText">Your message</label><textarea id="clientReplyText" maxlength="2000" placeholder="Write a specific reply for this conversation"></textarea><div class="operations-composer-actions">${conversation.replyDraft ? '<button id="clientUseDraft" type="button">Use suggested starter</button>' : ''}<button id="clientCopy" type="button">Copy for Messenger</button>${messengerUrl ? `<a href="${escapeHtml(messengerUrl)}" target="_blank" rel="noopener noreferrer">Open Messenger ↗</a>` : ''}${senders.length ? '<button id="clientSend" type="button">Review and send</button>' : ''}</div><p id="clientSendState" class="caption" role="status">A copied message is not sent. Confirm delivery in Messenger.</p></div>`;
+    detail.innerHTML = `<div class="chart-header"><div><div class="label">Client conversation</div><h3>${escapeHtml(conversation.businessName)}</h3><p class="caption">${escapeHtml(conversation.recipientName || 'Recipient unconfirmed')} · ${escapeHtml((conversation.accounts || []).join(', ') || 'Sender unknown')} · ${number(conversation.verifiedReplyCount)} verified inbound</p></div><div><button id="reloadClient" type="button">Reload thread</button><button id="closeClient" type="button">Back to queue</button></div></div>${messengerUrl ? `<a href="${escapeHtml(messengerUrl)}" target="_blank" rel="noopener noreferrer">Open full Messenger thread ↗</a>` : ''}<p class="warning">Stored history may be incomplete. Check Messenger before sending.</p>${previews}${messages}${composer}<div class="operations-section"><h3>Follow-up status</h3><label for="clientStatus">Status</label><select id="clientStatus">${Object.entries(statuses).map(([value, label]) => `<option value="${value}" ${conversation.status === value ? 'selected' : ''}>${label}</option>`).join('')}</select><label for="clientNote">Private note</label><textarea id="clientNote" maxlength="2000" placeholder="Next action and context">${escapeHtml(conversation.note || '')}</textarea><button id="saveClient" type="button">Save status and note</button><p id="clientSaveState" class="caption" role="status">Changes stay private until saved.</p></div>`;
     for (const id of ['clientStatus', 'clientNote', 'clientReplyText']) document.getElementById(id)?.addEventListener('input', () => { detail.dataset.dirty = 'true'; });
     document.getElementById('reloadClient').addEventListener('click', () => openClient(conversation.id));
     document.getElementById('closeClient').addEventListener('click', () => {
@@ -98,7 +99,16 @@
       } catch (error) { document.getElementById('clientSaveState').textContent = error.message; }
       finally { detailBusy = false; button.disabled = false; }
     });
-    if (conversation.replyDraft && senders.length) document.getElementById('clientUseDraft').addEventListener('click', () => { document.getElementById('clientReplyText').value = conversation.replyDraft; detail.dataset.dirty = 'true'; });
+    if (conversation.replyDraft) document.getElementById('clientUseDraft').addEventListener('click', () => { document.getElementById('clientReplyText').value = conversation.replyDraft; detail.dataset.dirty = 'true'; });
+    document.getElementById('clientCopy').addEventListener('click', async () => {
+      const text = document.getElementById('clientReplyText').value.trim();
+      const state = document.getElementById('clientSendState');
+      if (!text || /\[[^\]]+\]/.test(text)) { state.textContent = 'Write a complete reply and replace every placeholder.'; return; }
+      try {
+        await navigator.clipboard.writeText(text);
+        state.textContent = 'Copied. Paste it in the live Messenger thread, send there, and confirm delivery there.';
+      } catch (_) { state.textContent = 'Clipboard unavailable. Select and copy the text, then send it in Messenger.'; }
+    });
     if (senders.length) document.getElementById('clientSend').addEventListener('click', async () => {
       if (detailBusy) return;
       const text = document.getElementById('clientReplyText').value.trim();
@@ -149,10 +159,16 @@
       if (clientFilter === 'action' && !conversation.replyPending && conversation.status !== 'needs_review' && conversation.status !== 'interested') return false;
       if (clientFilter === 'replies' && !conversation.replyPending) return false;
       if (clientFilter === 'review' && conversation.status !== 'needs_review') return false;
+      if (['interested', 'waiting', 'closed'].includes(clientFilter) && conversation.status !== clientFilter) return false;
       if (senderFilter !== 'all' && !(conversation.accounts || []).includes(senderFilter)) return false;
-      return !query || [conversation.businessName, conversation.recipientName, ...(conversation.accounts || [])].join(' ').toLowerCase().includes(query);
+      return !query || [conversation.businessName, conversation.recipientName, conversation.lastVerifiedInboundText, conversation.note, ...(conversation.accounts || [])].join(' ').toLowerCase().includes(query);
     }).sort((left, right) => Number(Boolean(right.replyPending)) - Number(Boolean(left.replyPending)) || Number(right.status === 'needs_review') - Number(left.status === 'needs_review') || Date.parse(right.updatedAt || 0) - Date.parse(left.updatedAt || 0));
-    document.getElementById('clientCount').textContent = `${number(rows.length)} recorded conversations · ${number(Math.min(rows.length, visibleCount))} shown`;
+    document.getElementById('clientCount').textContent = `${number(rows.length)} conversations in this view · ${number(Math.min(rows.length, visibleCount))} shown`;
+    for (const button of document.getElementById('operationsContent').querySelectorAll('[data-inbox-filter]')) {
+      const active = button.dataset.inboxFilter === clientFilter;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    }
     document.getElementById('clientRows').innerHTML = rows.slice(0, visibleCount).map(conversation => {
       const privateUrl = `https://n8n.wildeautomations.com/reachr-command-center/#conversation=${encodeURIComponent(conversation.id)}`;
       const messengerUrl = safeMessenger(conversation.messengerUrl);
@@ -163,20 +179,21 @@
   }
 
   function render(data) {
-    tab.textContent = 'Messenger hub';
+    tab.textContent = 'Messenger';
     document.getElementById('operationsStatus').textContent = `Checked ${date(data.checkedAt)} · Halifax schedule · Replies send only after your confirmation`;
     currentData = data;
     const conversations = new Map((data.conversations || []).map(item => [item.id, item]));
-    const totals = `<div class="operations-totals"><div class="operations-total">Confirmed today<strong>${number(data.overview.confirmedToday)}</strong></div><div class="operations-total">Replies waiting<strong>${number(data.overview.repliesWaiting)}</strong></div><div class="operations-total">Needs action<strong>${number(data.overview.needsAction)}</strong></div></div>`;
+    const interestedCount = (data.conversations || []).filter(conversation => conversation.status === 'interested').length;
+    const totals = `<div class="operations-totals"><div class="operations-total">Replies waiting<strong>${number(data.overview.repliesWaiting)}</strong></div><div class="operations-total">Needs action<strong>${number(data.overview.needsAction)}</strong></div><div class="operations-total">Interested<strong>${number(interestedCount)}</strong></div></div>`;
     const senderHealth = `<section class="operations-section" aria-label="Messenger connection health"><h3>Messenger connection health</h3><p class="caption">These checks cover recorded sender accounts. Personal Messenger inboxes may contain additional conversations.</p>${data.senders.map(sender => `<div class="operations-row"><strong>${escapeHtml(sender.name)}</strong><small>Connection: ${escapeHtml(sender.connection)} · Reply checks: ${escapeHtml(sender.replyStatus)} · Window: ${escapeHtml(sender.campaignState)}</small>${sender.blockers.length ? `<small class="warning">${sender.blockers.map(escapeHtml).join(' · ')}</small>` : ''}</div>`).join('') || '<p class="warning">No sender accounts were reported by the live service.</p>'}</section>`;
     const senders = `<section class="operations-section"><h3>Messenger senders</h3><div class="operations-grid">${data.senders.map(sender => `<article class="operations-card"><h3>${escapeHtml(sender.name)}</h3><p>${number(sender.confirmedToday)} confirmed today · ${number(sender.totalConfirmed)} total · ${number(sender.eligible)} eligible</p><p>Window: ${escapeHtml(sender.campaignState)} · Connection: ${escapeHtml(sender.connection)} · Reply checks: ${escapeHtml(sender.replyStatus)}</p><p>Last confirmed: ${escapeHtml(date(sender.lastConfirmedAt))}</p>${sender.blockers.length ? `<p class="warning">${sender.blockers.map(escapeHtml).join(' · ')}</p>` : ''}</article>`).join('')}</div></section>`;
     const replies = `<section class="operations-section"><h3>Verified replies waiting</h3>${data.replyInbox.length ? data.replyInbox.map(reply => { const conversation = conversations.get(reply.conversationId); const url = safeMessenger(conversation?.messengerUrl); return `<article class="operations-row operations-row-urgent"><div class="operations-row-head"><strong>${escapeHtml(reply.businessName)}</strong><span class="operations-state operations-state-urgent">Reply waiting</span></div><small>${escapeHtml(reply.sender)} · Detected ${escapeHtml(date(reply.detectedAt))}</small><small class="operations-reply-preview">${escapeHtml(reply.preview)}</small><div class="operations-row-actions"><button type="button" data-client-id="${escapeHtml(reply.conversationId)}">Open and reply</button>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open Messenger ↗</a>` : ''}</div></article>`; }).join('') : '<p class="caption">No verified replies waiting.</p>'}</section>`;
     const accountNames = [...new Set((data.conversations || []).flatMap(conversation => conversation.accounts || []))].sort();
     const senderOptions = accountNames.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
-    const clients = `<section class="operations-section"><h3>Recorded conversations</h3><p class="caption">This view includes conversations recorded by the outreach system. Personal Messenger inboxes may contain additional chats. Open Messenger for complete context.</p><div class="operations-tools"><input id="clientSearch" type="search" aria-label="Search Messenger conversations" placeholder="Search business, contact, or sender" value="${escapeHtml(clientQuery)}"><select id="senderFilter" aria-label="Filter by Facebook account"><option value="all">All sender accounts</option>${senderOptions}</select><select id="clientFilter" aria-label="Filter conversations"><option value="all">All recorded chats</option><option value="action">Needs attention</option><option value="replies">Verified replies</option><option value="review">Needs review</option></select></div><p id="clientCount" class="caption"></p><div id="clientRows"></div><button id="showMoreClients" type="button" class="reachr-tab" hidden>Show more conversations</button></section>`;
+    const clients = `<section class="operations-section"><h3>Conversation queue</h3><p class="caption">Recorded outreach conversations only. Personal Messenger inboxes may contain additional chats; open the live thread for complete context.</p><div class="operations-quick-filters" aria-label="Conversation views"><button type="button" data-inbox-filter="action">Needs action</button><button type="button" data-inbox-filter="replies">Reply waiting</button><button type="button" data-inbox-filter="interested">Interested</button><button type="button" data-inbox-filter="waiting">Waiting</button><button type="button" data-inbox-filter="all">All</button></div><div class="operations-tools"><input id="clientSearch" type="search" aria-label="Search Messenger conversations" placeholder="Search business, person, reply, or note" value="${escapeHtml(clientQuery)}"><select id="senderFilter" aria-label="Filter by Facebook account"><option value="all">All sender accounts</option>${senderOptions}</select><select id="clientFilter" aria-label="Filter conversations"><option value="all">All recorded chats</option><option value="action">Needs attention</option><option value="replies">Verified replies</option><option value="review">Needs review</option><option value="interested">Interested</option><option value="waiting">Waiting</option><option value="closed">Closed</option></select></div><p id="clientCount" class="caption"></p><div id="clientRows"></div><button id="showMoreClients" type="button" class="reachr-tab" hidden>Show more conversations</button></section>`;
     const actions = `<section class="operations-section"><h3>Needs action</h3>${data.actions.length ? data.actions.map(action => `<div class="operations-row"><strong>${escapeHtml(action.title)}</strong>${action.detail ? `<small>${escapeHtml(action.detail)}</small>` : ''}</div>`).join('') : '<p class="caption">No active issues recorded.</p>'}</section>`;
     const pages = `<section class="operations-section"><h3>Page posting</h3><div class="operations-grid">${data.pages.map(page => `<article class="operations-card"><h3>${escapeHtml(page.name)}</h3><p>Connection: ${escapeHtml(page.connection)} · Posting: ${escapeHtml(page.postingStatus)}</p></article>`).join('')}</div></section>`;
-    document.getElementById('operationsContent').innerHTML = totals + senderHealth + replies + clients + `<details class="operations-details"><summary>Sender and Page operations</summary>${actions}${senders}${pages}</details>`;
+    document.getElementById('operationsContent').innerHTML = totals + replies + clients + `<details class="operations-details"><summary>Sender and Page operations</summary>${senderHealth}${actions}${senders}${pages}</details>`;
     document.getElementById('clientFilter').value = clientFilter;
     document.getElementById('senderFilter').value = accountNames.includes(senderFilter) ? senderFilter : 'all';
     if (!accountNames.includes(senderFilter)) senderFilter = 'all';
@@ -272,6 +289,14 @@
   });
   document.getElementById('refreshOperations').addEventListener('click', () => load(true));
   document.getElementById('operationsContent').addEventListener('click', event => {
+    const filter = event.target.closest('[data-inbox-filter]');
+    if (filter) {
+      clientFilter = filter.dataset.inboxFilter;
+      document.getElementById('clientFilter').value = clientFilter;
+      visibleCount = 100;
+      renderClients();
+      return;
+    }
     const button = event.target.closest('[data-client-id]');
     if (button) openClient(button.dataset.clientId);
   });
