@@ -71,20 +71,20 @@ test('client communications prioritizes verified replies and requires confirmati
   });
 
   assert.match(element('operationsContent').innerHTML, /Conversation queue/);
-  assert.match(element('operationsContent').innerHTML, /Reply waiting/);
+  assert.match(element('operationsContent').innerHTML, /Recent replies to review/);
   assert.match(element('operationsContent').innerHTML, /All sender accounts/);
   assert.match(element('operationsContent').innerHTML, /Sender and Page operations/);
   assert.match(element('operationsContent').innerHTML, /Messenger connection health/);
   assert.match(element('clientRows').innerHTML, /#conversation=aaaaaaaaaaaaaaaaaaaaaaaa/);
-  assert.match(element('clientRows').innerHTML, /Open conversation/);
-  assert.match(element('operationsContent').innerHTML, /Open and reply/);
-  assert.match(element('clientRows').innerHTML, /Verified reply waiting/);
+  assert.match(element('clientRows').innerHTML, /Review conversation/);
+  assert.match(element('operationsContent').innerHTML, /Recent inbound to review/);
+  assert.match(element('clientRows').innerHTML, /Recent reply to review/);
   assert.match(element('clientRows').innerHTML, /&lt;Client&gt;/);
   assert.doesNotMatch(element('clientRows').innerHTML, /<Client>/);
-  assert.ok(element('clientRows').innerHTML.indexOf('Verified reply waiting') < element('clientRows').innerHTML.indexOf('Review Co'));
+  assert.doesNotMatch(element('clientRows').innerHTML, /Review Co/, 'older status flags are not in the default action queue');
 
   element('operationsContent').listeners.click({ target: { closest: selector => selector === '[data-inbox-filter]' ? { dataset: { inboxFilter: 'replies' } } : null } });
-  assert.match(element('clientRows').innerHTML, /Verified reply waiting/);
+  assert.match(element('clientRows').innerHTML, /Recent reply to review/);
   assert.doesNotMatch(element('clientRows').innerHTML, /Review Co/);
   element('operationsContent').listeners.click({ target: { closest: selector => selector === '[data-inbox-filter]' ? { dataset: { inboxFilter: 'all' } } : null } });
 
@@ -95,13 +95,14 @@ test('client communications prioritizes verified replies and requires confirmati
 
   element('clientFilter').listeners.change({ target: { value: 'review' } });
   assert.match(element('clientRows').innerHTML, /Review Co/);
-  assert.doesNotMatch(element('clientRows').innerHTML, /Verified reply waiting/);
+  assert.doesNotMatch(element('clientRows').innerHTML, /Recent reply to review/);
   element('clientSearch').listeners.input({ target: { value: 'missing' } });
   assert.match(element('clientRows').innerHTML, /No conversations match/);
 
   context.renderDetailForTest(conversation);
   assert.match(element('clientDetail').innerHTML, /Verified inbound/);
   assert.match(element('clientDetail').innerHTML, /Review and send/);
+  assert.match(element('clientDetail').innerHTML, /checked the latest message/);
   assert.match(element('clientDetail').innerHTML, /Copy for Messenger/);
   element('clientStatus').value = 'waiting';
   element('clientNote').value = 'Follow up on Tuesday';
@@ -120,6 +121,9 @@ test('client communications prioritizes verified replies and requires confirmati
 
   confirmed = true;
   await element('clientSend').listeners.click();
+  assert.equal(requests.length, 0, 'unverified live thread must not send');
+  element('clientLiveChecked').checked = true;
+  await element('clientSend').listeners.click();
   const send = requests.find(request => request.url.endsWith('/reply'));
   assert(send);
   assert.equal(send.options.method, 'POST');
@@ -129,6 +133,35 @@ test('client communications prioritizes verified replies and requires confirmati
   context.renderDetailForTest({ ...conversation, replyPending: false, replySenders: [] });
   assert.doesNotMatch(element('clientDetail').innerHTML, /id="clientSend"/);
   assert.match(element('clientDetail').innerHTML, /Copy for Messenger/);
+
+  const oldId = 'c'.repeat(24);
+  const autoId = 'd'.repeat(24);
+  context.renderForTest({
+    checkedAt: '2026-10-14T18:10:00Z',
+    overview: { repliesWaiting: 3, needsAction: 3 },
+    conversations: [
+      { id: oldId, businessName: 'Old lead', accounts: ['Jack'], replyPending: true, status: 'awaiting_reply', lastVerifiedInboundText: 'Details please', lastVerifiedInboundAt: '2026-10-03T12:00:00Z', updatedAt: '2026-10-03T12:00:00Z' },
+      { id: autoId, businessName: 'Auto lead', accounts: ['Jack'], replyPending: true, status: 'awaiting_reply', lastVerifiedInboundText: 'Thanks for contacting us. We received your message.', lastVerifiedInboundAt: '2026-10-14T18:05:00Z', updatedAt: '2026-10-14T18:05:00Z' },
+      { id: replyId, businessName: 'Fresh question', accounts: ['Jack'], replyPending: true, status: 'awaiting_reply', lastVerifiedInboundText: 'Can we talk tomorrow?', lastVerifiedInboundAt: '2026-10-14T18:08:00Z', updatedAt: '2026-10-14T18:08:00Z' },
+    ],
+    replyInbox: [
+      { conversationId: oldId, businessName: 'Old lead', sender: 'Jack', preview: 'Details please', detectedAt: '2026-10-03T12:00:00Z' },
+      { conversationId: autoId, businessName: 'Auto lead', sender: 'Jack', preview: 'Thanks for contacting us. We received your message.', detectedAt: '2026-10-14T18:05:00Z' },
+      { conversationId: replyId, businessName: 'Fresh question', sender: 'Jack', preview: 'Can we talk tomorrow?', detectedAt: '2026-10-14T18:08:00Z' },
+    ],
+    senders: [], actions: [], pages: [],
+  });
+  element('clientSearch').listeners.input({ target: { value: '' } });
+  element('clientFilter').listeners.change({ target: { value: 'action' } });
+  assert.match(element('operationsContent').innerHTML, /1 older stored reply flag/);
+  assert.match(element('operationsContent').innerHTML, /1 recent likely auto-replies or declines/);
+  assert.ok(element('operationsContent').innerHTML.indexOf('Fresh question') < element('operationsContent').innerHTML.indexOf('Old lead'), 'newest reply appears before historical flags');
+  assert.match(element('clientRows').innerHTML, /Fresh question/);
+  assert.doesNotMatch(element('clientRows').innerHTML, /Old lead|Auto lead/);
+  context.renderDetailForTest({ ...conversation, id: oldId, replyPending: true, replySenders: [{ key: 'verified-jack', name: 'Jack' }] });
+  assert.doesNotMatch(element('clientDetail').innerHTML, /id="clientSend"/, 'old replies cannot be sent directly');
+  context.renderDetailForTest({ ...conversation, id: autoId, replyPending: true, replySenders: [{ key: 'verified-jack', name: 'Jack' }] });
+  assert.doesNotMatch(element('clientDetail').innerHTML, /id="clientSend"/, 'likely auto replies cannot be sent directly');
 
   context.window.reachrSupabaseClient.from = table => {
     return { select() { return this; }, eq() { return this; }, order() { return this; },
