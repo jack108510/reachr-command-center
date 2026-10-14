@@ -77,7 +77,7 @@ test('client communications prioritizes verified replies and requires confirmati
   assert.match(element('operationsContent').innerHTML, /Messenger connection health/);
   assert.match(element('clientRows').innerHTML, /#conversation=aaaaaaaaaaaaaaaaaaaaaaaa/);
   assert.match(element('clientRows').innerHTML, /Review conversation/);
-  assert.match(element('operationsContent').innerHTML, /Recent inbound to review/);
+  assert.match(element('operationsContent').innerHTML, /Latest captured inbound/);
   assert.match(element('clientRows').innerHTML, /Recent reply to review/);
   assert.match(element('clientRows').innerHTML, /&lt;Client&gt;/);
   assert.doesNotMatch(element('clientRows').innerHTML, /<Client>/);
@@ -154,7 +154,7 @@ test('client communications prioritizes verified replies and requires confirmati
   element('clientSearch').listeners.input({ target: { value: '' } });
   element('clientFilter').listeners.change({ target: { value: 'action' } });
   assert.match(element('operationsContent').innerHTML, /1 older stored reply flag/);
-  assert.match(element('operationsContent').innerHTML, /1 recent likely auto-replies or declines/);
+  assert.match(element('operationsContent').innerHTML, /Likely auto \/ decline<strong>1/);
   assert.ok(element('operationsContent').innerHTML.indexOf('Fresh question') < element('operationsContent').innerHTML.indexOf('Old lead'), 'newest reply appears before historical flags');
   assert.match(element('clientRows').innerHTML, /Fresh question/);
   assert.doesNotMatch(element('clientRows').innerHTML, /Old lead|Auto lead/);
