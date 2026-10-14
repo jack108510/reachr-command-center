@@ -122,6 +122,7 @@
       if (detail.dataset.dirty === 'true' && !window.confirm('Discard unsaved status, note, or reply text?')) return;
       selectedClientId = null;
       detail.hidden = true;
+      document.getElementById('conversationPlaceholder')?.removeAttribute('hidden');
     });
     document.getElementById('saveClient').addEventListener('click', async () => {
       if (detailBusy) return;
@@ -193,6 +194,7 @@
     selectedClientId = conversationId;
     const detail = existing;
     detail.hidden = false;
+    document.getElementById('conversationPlaceholder')?.setAttribute('hidden', '');
     detail.dataset.dirty = 'false';
     detail.textContent = 'Loading private conversation…';
     try {
@@ -257,7 +259,8 @@
     const clients = `<section class="operations-section"><h3>Conversations</h3><p class="caption">One row per client thread. Recent shows activity captured in the past 72 hours; All history includes older records. Open Messenger to see the complete current conversation.</p><div class="operations-quick-filters" aria-label="Conversation views"><button type="button" data-inbox-filter="recent">Recent</button><button type="button" data-inbox-filter="action">Recent to review</button><button type="button" data-inbox-filter="priority">Priority leads</button><button type="button" data-inbox-filter="partnership">Partnerships</button><button type="button" data-inbox-filter="interested">Interested</button><button type="button" data-inbox-filter="waiting">Waiting</button><button type="button" data-inbox-filter="all">All history</button></div><div class="operations-tools"><input id="clientSearch" type="search" aria-label="Search Messenger conversations" placeholder="Search business, person, message, brief, or note" value="${escapeHtml(clientQuery)}"><select id="senderFilter" aria-label="Filter by Facebook account"><option value="all">All sender accounts</option>${senderOptions}</select><select id="clientFilter" aria-label="Filter conversations"><option value="recent">Recent</option><option value="action">Recent to review</option><option value="priority">Priority leads</option><option value="partnership">Partnerships</option><option value="interested">Interested</option><option value="waiting">Waiting</option><option value="closed">Closed</option><option value="all">All history</option></select></div><p id="clientCount" class="caption"></p><div id="clientRows"></div><button id="showMoreClients" type="button" class="reachr-tab" hidden>Show more conversations</button></section>`;
     const actions = `<section class="operations-section"><h3>Needs action</h3>${data.actions.length ? data.actions.map(action => `<div class="operations-row"><strong>${escapeHtml(action.title)}</strong>${action.detail ? `<small>${escapeHtml(action.detail)}</small>` : ''}</div>`).join('') : '<p class="caption">No active issues recorded.</p>'}</section>`;
     const pages = `<section class="operations-section"><h3>Page posting</h3><div class="operations-grid">${data.pages.map(page => `<article class="operations-card"><h3>${escapeHtml(page.name)}</h3><p>Connection: ${escapeHtml(page.connection)} · Posting: ${escapeHtml(page.postingStatus)}</p></article>`).join('')}</div></section>`;
-    document.getElementById('operationsContent').innerHTML = jackSyncNotice + totals + clients + `<details class="operations-details"><summary>Sender and Page operations</summary>${senderHealth}${actions}${senders}${pages}</details>`;
+    document.getElementById('operationsContent').innerHTML = jackSyncNotice + totals + `<div class="operations-workspace"><div class="operations-list-pane">${clients}</div><div class="operations-detail-pane"><div id="conversationPlaceholder" class="operations-conversation-placeholder" ${selectedClientId ? 'hidden' : ''}><strong>Choose a conversation</strong><p>Review the recorded context, tag valuable leads, and write a brief after checking the live Messenger thread.</p></div></div></div>` + `<details class="operations-details"><summary>Sender and Page operations</summary>${senderHealth}${actions}${senders}${pages}</details>`;
+    document.querySelector('.operations-detail-pane').prepend(document.getElementById('clientDetail'));
     document.getElementById('clientFilter').value = clientFilter;
     document.getElementById('senderFilter').value = accountNames.includes(senderFilter) ? senderFilter : 'all';
     if (!accountNames.includes(senderFilter)) senderFilter = 'all';
