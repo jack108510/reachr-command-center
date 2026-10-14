@@ -41,7 +41,11 @@
 
   async function apiRequest(path, options = {}) {
     const { data: { session }, error } = await window.reachrSupabaseClient.auth.getSession();
-    if (error || !session?.access_token) throw Error('Sign in again to manage conversations.');
+    if (error || !session?.access_token) {
+      const failure = Error('Sign in again to manage conversations.');
+      failure.authRequired = true;
+      throw failure;
+    }
     const response = await fetch(`${apiBase}${path}`, {
       ...options,
       headers: { Authorization: `Bearer ${session.access_token}`, ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers },
@@ -49,7 +53,9 @@
     });
     if (!response.ok) {
       const result = await response.json().catch(() => ({}));
-      throw Error(response.status === 401 ? 'Sign in again to manage conversations.' : result.error || `Command Center request failed (${response.status}).`);
+      const failure = Error(response.status === 401 || response.status === 403 ? 'Sign in again to manage conversations.' : result.error || `Command Center request failed (${response.status}).`);
+      failure.authRequired = response.status === 401 || response.status === 403;
+      throw failure;
     }
     return response.json();
   }
@@ -162,6 +168,7 @@
     currentData = data;
     const conversations = new Map((data.conversations || []).map(item => [item.id, item]));
     const totals = `<div class="operations-totals"><div class="operations-total">Confirmed today<strong>${number(data.overview.confirmedToday)}</strong></div><div class="operations-total">Replies waiting<strong>${number(data.overview.repliesWaiting)}</strong></div><div class="operations-total">Needs action<strong>${number(data.overview.needsAction)}</strong></div></div>`;
+    const senderHealth = `<section class="operations-section" aria-label="Messenger connection health"><h3>Messenger connection health</h3><p class="caption">These checks cover recorded sender accounts. Personal Messenger inboxes may contain additional conversations.</p>${data.senders.map(sender => `<div class="operations-row"><strong>${escapeHtml(sender.name)}</strong><small>Connection: ${escapeHtml(sender.connection)} · Reply checks: ${escapeHtml(sender.replyStatus)} · Window: ${escapeHtml(sender.campaignState)}</small>${sender.blockers.length ? `<small class="warning">${sender.blockers.map(escapeHtml).join(' · ')}</small>` : ''}</div>`).join('') || '<p class="warning">No sender accounts were reported by the live service.</p>'}</section>`;
     const senders = `<section class="operations-section"><h3>Messenger senders</h3><div class="operations-grid">${data.senders.map(sender => `<article class="operations-card"><h3>${escapeHtml(sender.name)}</h3><p>${number(sender.confirmedToday)} confirmed today · ${number(sender.totalConfirmed)} total · ${number(sender.eligible)} eligible</p><p>Window: ${escapeHtml(sender.campaignState)} · Connection: ${escapeHtml(sender.connection)} · Reply checks: ${escapeHtml(sender.replyStatus)}</p><p>Last confirmed: ${escapeHtml(date(sender.lastConfirmedAt))}</p>${sender.blockers.length ? `<p class="warning">${sender.blockers.map(escapeHtml).join(' · ')}</p>` : ''}</article>`).join('')}</div></section>`;
     const replies = `<section class="operations-section"><h3>Verified replies waiting</h3>${data.replyInbox.length ? data.replyInbox.map(reply => { const conversation = conversations.get(reply.conversationId); const url = safeMessenger(conversation?.messengerUrl); return `<article class="operations-row operations-row-urgent"><div class="operations-row-head"><strong>${escapeHtml(reply.businessName)}</strong><span class="operations-state operations-state-urgent">Reply waiting</span></div><small>${escapeHtml(reply.sender)} · Detected ${escapeHtml(date(reply.detectedAt))}</small><small class="operations-reply-preview">${escapeHtml(reply.preview)}</small><div class="operations-row-actions"><button type="button" data-client-id="${escapeHtml(reply.conversationId)}">Open and reply</button>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open Messenger ↗</a>` : ''}</div></article>`; }).join('') : '<p class="caption">No verified replies waiting.</p>'}</section>`;
     const accountNames = [...new Set((data.conversations || []).flatMap(conversation => conversation.accounts || []))].sort();
@@ -169,7 +176,7 @@
     const clients = `<section class="operations-section"><h3>Recorded conversations</h3><p class="caption">This view includes conversations recorded by the outreach system. Personal Messenger inboxes may contain additional chats. Open Messenger for complete context.</p><div class="operations-tools"><input id="clientSearch" type="search" aria-label="Search Messenger conversations" placeholder="Search business, contact, or sender" value="${escapeHtml(clientQuery)}"><select id="senderFilter" aria-label="Filter by Facebook account"><option value="all">All sender accounts</option>${senderOptions}</select><select id="clientFilter" aria-label="Filter conversations"><option value="all">All recorded chats</option><option value="action">Needs attention</option><option value="replies">Verified replies</option><option value="review">Needs review</option></select></div><p id="clientCount" class="caption"></p><div id="clientRows"></div><button id="showMoreClients" type="button" class="reachr-tab" hidden>Show more conversations</button></section>`;
     const actions = `<section class="operations-section"><h3>Needs action</h3>${data.actions.length ? data.actions.map(action => `<div class="operations-row"><strong>${escapeHtml(action.title)}</strong>${action.detail ? `<small>${escapeHtml(action.detail)}</small>` : ''}</div>`).join('') : '<p class="caption">No active issues recorded.</p>'}</section>`;
     const pages = `<section class="operations-section"><h3>Page posting</h3><div class="operations-grid">${data.pages.map(page => `<article class="operations-card"><h3>${escapeHtml(page.name)}</h3><p>Connection: ${escapeHtml(page.connection)} · Posting: ${escapeHtml(page.postingStatus)}</p></article>`).join('')}</div></section>`;
-    document.getElementById('operationsContent').innerHTML = totals + replies + clients + `<details class="operations-details"><summary>Sender and Page operations</summary>${actions}${senders}${pages}</details>`;
+    document.getElementById('operationsContent').innerHTML = totals + senderHealth + replies + clients + `<details class="operations-details"><summary>Sender and Page operations</summary>${actions}${senders}${pages}</details>`;
     document.getElementById('clientFilter').value = clientFilter;
     document.getElementById('senderFilter').value = accountNames.includes(senderFilter) ? senderFilter : 'all';
     if (!accountNames.includes(senderFilter)) senderFilter = 'all';
@@ -196,8 +203,8 @@
       needsReply = new Set([...latest].filter(([, message]) => message.direction === 'inbound').map(([id]) => id));
     } catch (_) { triageAvailable = false; }
     tab.textContent = 'Messenger archive';
-    document.getElementById('operationsStatus').textContent = 'Live sender connection unavailable · showing stored outreach archive';
-    content.innerHTML = `<div class="operations-offline"><strong>Live sender accounts are offline.</strong><p>The archive can flag potential unanswered replies, but it cannot guarantee that new messages are captured. Verify each flagged thread in Messenger. Reply sending and follow-up changes require the live connection.</p><button type="button" id="openStoredInbox">Open stored inbox</button></div><section class="operations-section"><h3>Stored conversations</h3><p id="archivePriority" class="operations-priority"></p><p id="archiveCount" class="caption"></p><div class="operations-archive-tools"><input id="archiveSearch" type="search" aria-label="Search stored conversations" placeholder="Search business, contact, or sender"><select id="archiveFilter" aria-label="Filter stored conversations"><option value="needs">Potential replies to check</option><option value="all">All stored chats</option></select></div><div id="archiveRows"></div><button id="showMoreArchive" type="button" class="reachr-tab" hidden>Show more archived chats</button></section>`;
+    document.getElementById('operationsStatus').textContent = 'Live outreach connection unavailable · showing stored outreach archive';
+    content.innerHTML = `<div class="operations-offline"><strong>Live outreach connection unavailable.</strong><p>The archive can flag potential unanswered replies, but it cannot guarantee that new messages are captured. Verify each flagged thread in Messenger. Reply sending and follow-up changes require the live connection.</p><button type="button" id="openStoredInbox">Open stored inbox</button></div><section class="operations-section"><h3>Stored conversations</h3><p id="archivePriority" class="operations-priority"></p><p id="archiveCount" class="caption"></p><div class="operations-archive-tools"><input id="archiveSearch" type="search" aria-label="Search stored conversations" placeholder="Search business, contact, or sender"><select id="archiveFilter" aria-label="Filter stored conversations"><option value="needs">Potential replies to check</option><option value="all">All stored chats</option></select></div><div id="archiveRows"></div><button id="showMoreArchive" type="button" class="reachr-tab" hidden>Show more archived chats</button></section>`;
     if (!triageAvailable || !rows.some(row => needsReply.has(row.id))) document.getElementById('archiveFilter').value = 'all';
     const priorityCount = rows.filter(row => needsReply.has(row.id)).length;
     document.getElementById('archivePriority').textContent = triageAvailable ? `${number(priorityCount)} archived ${priorityCount === 1 ? 'chat' : 'chats'} may need a reply · check in Messenger` : 'Reply check unavailable · open Messenger to review new messages';
@@ -229,6 +236,11 @@
     } catch (error) {
       currentData = null;
       document.getElementById('operationsContent').textContent = '';
+      if (error.authRequired) {
+        document.getElementById('operationsStatus').textContent = 'Session expired · sign in again to view Messenger outreach.';
+        document.getElementById('clientDetail').hidden = true;
+        return;
+      }
       document.getElementById('operationsStatus').textContent = `${error.message} Checking stored archive…`;
       try { await showStoredArchiveFallback(error); }
       catch (archiveError) { document.getElementById('operationsStatus').textContent = `${error.message} Stored archive unavailable: ${archiveError.message}`; }

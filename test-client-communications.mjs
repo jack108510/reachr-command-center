@@ -24,6 +24,7 @@ test('client communications prioritizes verified replies and requires confirmati
     querySelector: selector => selector === '.reachr-nav' ? element('nav') : element('main'),
   };
   let confirmed = false;
+  let authRejected = false;
   const requests = [];
   const conversation = {
     id: 'a'.repeat(24), businessName: '<Client>', recipientName: 'Sam', accounts: ['Jack'],
@@ -43,13 +44,14 @@ test('client communications prioritizes verified replies and requires confirmati
     setInterval() {},
     fetch: async (url, options) => {
       requests.push({ url, options });
+      if (authRejected) return { ok: false, status: 401, json: async () => ({ error: 'expired' }) };
       return { ok: true, json: async () => url.endsWith('/reply') ? { status: 'confirmed' } : conversation };
     },
     URL,
     Date,
   });
   vm.runInContext(triageSource, context);
-  const instrumented = source.replace(/\}\)\(\);\s*$/, 'globalThis.renderForTest = render;globalThis.renderDetailForTest = renderDetail;globalThis.showStoredArchiveFallbackForTest = showStoredArchiveFallback;})();');
+  const instrumented = source.replace(/\}\)\(\);\s*$/, 'globalThis.renderForTest = render;globalThis.renderDetailForTest = renderDetail;globalThis.showStoredArchiveFallbackForTest = showStoredArchiveFallback;globalThis.loadForTest = load;})();');
   assert.notEqual(instrumented, source);
   vm.runInContext(instrumented, context);
 
@@ -69,9 +71,10 @@ test('client communications prioritizes verified replies and requires confirmati
   assert.match(element('operationsContent').innerHTML, /Recorded conversations/);
   assert.match(element('operationsContent').innerHTML, /All sender accounts/);
   assert.match(element('operationsContent').innerHTML, /Sender and Page operations/);
+  assert.match(element('operationsContent').innerHTML, /Messenger connection health/);
   assert.match(element('clientRows').innerHTML, /#conversation=aaaaaaaaaaaaaaaaaaaaaaaa/);
-  assert.match(element('clientRows').innerHTML, /Open here/);
-  assert.match(element('operationsContent').innerHTML, /Open and reply here/);
+  assert.match(element('clientRows').innerHTML, /Open conversation/);
+  assert.match(element('operationsContent').innerHTML, /Open and reply/);
   assert.match(element('clientRows').innerHTML, /Verified reply waiting/);
   assert.match(element('clientRows').innerHTML, /&lt;Client&gt;/);
   assert.doesNotMatch(element('clientRows').innerHTML, /<Client>/);
@@ -121,11 +124,18 @@ test('client communications prioritizes verified replies and requires confirmati
     };
   };
   await context.showStoredArchiveFallbackForTest(new Error('offline'));
-  assert.match(element('operationsContent').innerHTML, /Live sender accounts are offline/);
+  assert.match(element('operationsContent').innerHTML, /Live outreach connection unavailable/);
   assert.match(element('archiveRows').innerHTML, /Archived Co/);
   assert.match(element('archiveRows').innerHTML, /Archive updated/);
   assert.match(element('archiveRows').innerHTML, /Potential reply/);
   assert.match(element('archivePriority').textContent, /1 archived chat/);
   assert.equal(element('showMoreArchive').hidden, true);
   assert.doesNotMatch(element('operationsContent').innerHTML, /Review and send/);
+
+  authRejected = true;
+  [...elements.values()].find(item => item.id === 'operationsPanel').hidden = false;
+  await context.loadForTest(true);
+  assert.match(element('operationsStatus').textContent, /Session expired/);
+  assert.equal(element('operationsContent').textContent, '');
+  assert.equal(element('clientDetail').hidden, true);
 });
