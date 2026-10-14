@@ -35,6 +35,8 @@
     if (/\b(thanks for (contacting|messaging|reaching out)|thank you for (contacting|messaging|reaching out)|we['’]?(ve| have) received your message|we['’]?(ll| will) get back to you|not here right now|away right now|outside (of )?business hours|one of our sales reps will be with you|you['’]?re no longer chatting with an ai agent)\b/.test(body)) return 'automatic';
     return 'review';
   }
+  const conversationReplyCategory = conversation => conversation.latestDirection === 'inbound' && conversation.latestPreviewVerified !== false
+    ? replyCategory(conversation.latestPreview) : 'review';
   function triageReplies(data) {
     const conversations = new Map((data.conversations || []).map(item => [item.id, item]));
     const now = timestamp(data.checkedAt) || Date.now();
@@ -199,7 +201,7 @@
     const now = timestamp(currentData?.checkedAt) || Date.now();
     const rows = all.filter(conversation => {
       if (clientFilter === 'recent' && timestamp(conversation.updatedAt) < now - recentWindowMs) return false;
-      if (clientFilter === 'action' && (conversation.status !== 'needs_review' || timestamp(conversation.updatedAt) < now - recentWindowMs)) return false;
+      if (clientFilter === 'action' && (conversation.status !== 'needs_review' || conversationReplyCategory(conversation) !== 'review' || timestamp(conversation.updatedAt) < now - recentWindowMs)) return false;
       if (clientFilter === 'replies' && !conversation.replyPending) return false;
       if (clientFilter === 'review' && conversation.status !== 'needs_review') return false;
       if (['interested', 'waiting', 'closed'].includes(clientFilter) && conversation.status !== clientFilter) return false;
@@ -215,8 +217,9 @@
     document.getElementById('clientRows').innerHTML = rows.slice(0, visibleCount).map(conversation => {
       const privateUrl = `https://n8n.wildeautomations.com/reachr-command-center/#conversation=${encodeURIComponent(conversation.id)}`;
       const messengerUrl = safeMessenger(conversation.messengerUrl);
-      const urgent = conversation.status === 'needs_review';
-      const state = { needs_review: 'Needs review', interested: 'Interested', waiting: 'Waiting', closed: 'Closed', awaiting_reply: 'Awaiting reply' }[conversation.status] || 'Review status';
+      const category = conversationReplyCategory(conversation);
+      const urgent = conversation.status === 'needs_review' && category === 'review';
+      const state = conversation.status === 'needs_review' && category === 'decline' ? 'Declined · close' : conversation.status === 'needs_review' && category === 'automatic' ? 'Automatic reply' : { needs_review: 'Needs review', interested: 'Interested', waiting: 'Waiting', closed: 'Closed', awaiting_reply: 'Awaiting reply' }[conversation.status] || 'Review status';
       const direction = conversation.latestDirection === 'outbound' ? 'Last recorded outbound' : conversation.latestDirection === 'inbound' ? 'Last recorded inbound' : conversation.latestPreviewVerified === false ? 'Unverified preview' : 'Latest recorded message';
       const snippet = String(conversation.latestPreview || 'No message captured').replace(/\s+/g, ' ').trim().slice(0, 180);
       return `<article class="operations-row ${urgent ? 'operations-row-urgent' : ''}"><div class="operations-row-head"><strong>${escapeHtml(conversation.businessName)}</strong><span class="operations-state ${urgent ? 'operations-state-urgent' : ''}">${escapeHtml(state)}</span></div><small>${escapeHtml(conversation.recipientName || 'Recipient unconfirmed')} · ${escapeHtml((conversation.accounts || []).join(', ') || 'Sender unknown')} · Last recorded ${escapeHtml(date(conversation.updatedAt))}</small><small class="operations-reply-preview">${escapeHtml(direction)}: ${escapeHtml(snippet)}${conversation.latestPreview?.length > 180 ? '…' : ''}</small>${conversation.candidateCount ? `<small>${number(conversation.candidateCount)} unverified preview(s) need checking in Messenger.</small>` : ''}<div class="operations-row-actions"><button type="button" data-client-id="${escapeHtml(conversation.id)}">Manage conversation</button><a href="${escapeHtml(privateUrl)}" target="_blank" rel="noopener noreferrer">Private fallback ↗</a>${messengerUrl ? `<a href="${escapeHtml(messengerUrl)}" target="_blank" rel="noopener noreferrer">Open full thread ↗</a>` : ''}</div></article>`;
@@ -232,7 +235,7 @@
     const allConversations = data.conversations || [];
     const newestRecorded = allConversations.reduce((latest, conversation) => Math.max(latest, timestamp(conversation.updatedAt)), 0);
     const recentConversations = allConversations.filter(conversation => timestamp(conversation.updatedAt) >= (timestamp(data.checkedAt) || Date.now()) - recentWindowMs);
-    const totals = `<div class="operations-totals"><div class="operations-total">Recent client threads<strong>${number(recentConversations.length)}</strong></div><div class="operations-total">Recent needs review<strong>${number(recentConversations.filter(conversation => conversation.status === 'needs_review').length)}</strong></div><div class="operations-total">Newest recorded activity<strong class="operations-latest-time">${escapeHtml(newestRecorded ? date(newestRecorded) : 'None')}</strong></div></div>`;
+    const totals = `<div class="operations-totals"><div class="operations-total">Recent client threads<strong>${number(recentConversations.length)}</strong></div><div class="operations-total">Recent to review<strong>${number(recentConversations.filter(conversation => conversation.status === 'needs_review' && conversationReplyCategory(conversation) === 'review').length)}</strong></div><div class="operations-total">Newest recorded activity<strong class="operations-latest-time">${escapeHtml(newestRecorded ? date(newestRecorded) : 'None')}</strong></div></div>`;
     const jackReplyStatus = data.senders.find(sender => sender.name === 'Jack Sereda')?.replyStatus;
     const jackSyncNotice = jackReplyStatus && jackReplyStatus !== 'current'
       ? `<div class="operations-offline" role="status"><strong>Jack Messenger sync: ${escapeHtml(jackReplyStatus.replaceAll('_', ' '))}</strong><p>Some Jack conversations may have newer messages than this feed. Open the live Messenger thread before replying; the checker is still working through his recorded chats.</p></div>`
