@@ -12,7 +12,7 @@
   const panel = document.createElement('section');
   panel.id = 'operationsPanel';
   panel.hidden = true;
-  panel.innerHTML = '<div class="chart-card"><div class="chart-header"><div><div class="label">Messenger communication</div><h2>Conversation desk</h2><p class="caption">Start with replies waiting, keep follow-up notes, and open the live thread when you need full context.</p></div><button class="reachr-tab" id="refreshOperations" type="button">Refresh</button></div><p class="caption" id="operationsStatus">Checking connected sender accounts…</p><section id="clientDetail" class="operations-client-detail" hidden></section><div id="operationsContent"></div></div>';
+  panel.innerHTML = '<div class="chart-card"><div class="chart-header"><div><div class="label">Messenger communication</div><h2>Conversation desk</h2><p class="caption">See the latest captured messages, review replies worth answering, and open the live thread for full context.</p></div><button class="reachr-tab" id="refreshOperations" type="button">Refresh</button></div><p class="caption" id="operationsStatus">Checking connected sender accounts…</p><section id="clientDetail" class="operations-client-detail" hidden></section><div id="operationsContent"></div></div>';
   document.getElementById('metaPanel').after(panel);
 
   const style = document.createElement('style');
