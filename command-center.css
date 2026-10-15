@@ -58,7 +58,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .dashboard-page .operations-total strong{color:#222823}
 .dashboard-page .operations-tools input,.dashboard-page .operations-tools select{background:#fff;border-color:var(--stroke);color:var(--ink)}
 .dashboard-page .operations-client-detail{background:#fffdfa;border-color:#dac5ad}
-.dashboard-page .operations-client-detail textarea,.dashboard-page .operations-client-detail select{background:#fff;color:var(--ink);border-color:var(--stroke)}
+.dashboard-page .operations-client-detail textarea,.dashboard-page .operations-client-detail select,.dashboard-page .operations-client-detail input:not([type="checkbox"]){background:#fff;color:var(--ink);border:1px solid var(--stroke);border-radius:8px;padding:10px;font:inherit}
 .dashboard-page .operations-message.outbound{background:#f7f1e9}
 .dashboard-page .operations-row button,.dashboard-page .operations-client-detail button{background:#27342c;color:#fff;border-color:#27342c}
 .dashboard-page .operations-offline{margin:20px 0;padding:18px 20px;border:1px solid #dfc3ab;border-radius:13px;background:#fbefe5;color:#513e32;line-height:1.5}
@@ -189,6 +189,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .dashboard-page .operations-lead-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .dashboard-page .operations-lead-tags span{padding:5px 8px;border-radius:999px;background:#e5eee3;color:#31593b;font:800 10px Manrope,sans-serif}
 .dashboard-page .operations-brief{margin-top:9px!important;color:#554c43!important;line-height:1.5}
+.dashboard-page .operations-lead-fields input{display:block;width:100%;min-height:42px;margin-top:6px}
+.dashboard-page .operations-freshness{display:block;margin:10px 0;padding:8px 10px;border-radius:8px;font:700 11px Manrope,sans-serif;line-height:1.45}
+.dashboard-page .operations-freshness-recent{background:#e7f2e7;color:#315b3e!important}
+.dashboard-page .operations-freshness-delayed{background:#fff2dc;color:#755014!important}
+.dashboard-page .operations-freshness-uncertain{background:#fbe8df;color:#874423!important}
+.dashboard-page .operations-next-action{margin-top:8px!important;font-weight:700;color:#425c45!important}
+.dashboard-page .operations-due-now{color:#a23e22!important}
 .dashboard-page .operations-workspace{display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:18px;align-items:start}
 .dashboard-page .operations-list-pane,.dashboard-page .operations-detail-pane{min-width:0}
 .dashboard-page .operations-list-pane>.operations-section{margin-top:0}
